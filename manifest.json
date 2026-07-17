@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "MindShield",
+  "version": "1.0.0",
+  "description": "Protects your critical thinking from being outsourced to AI.",
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "scripting",
+    "offscreen",
+    "storage"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*", 
+        "https://claude.ai/*",
+        "https://gemini.google.com/*",
+        "https://x.com/*",
+        "https://grok.com/*"
+      ],
+      "js": ["content.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["transformers/*"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
+  "icons": {
+"48": "icon48.png"
+}
+}
