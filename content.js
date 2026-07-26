@@ -27,23 +27,46 @@ function getRealInput() {
   return null;
 }
 
-// FIX: Dynamic Ancestor Climbing.
-// Climbs from the text input to find the first parent enclosing at least one native button.
-// This matches the visual capsule bar on ChatGPT, Claude, Gemini, and Grok with 100% accuracy.
+// Locates the outer container or capsule of the input area based on the platform
 function getOverlayContainer(realInput) {
   if (!realInput) return null;
 
-  let el = realInput.parentElement;
-  while (el && el !== document.body) {
-    // Check if this container contains any buttons, excluding our own fake buttons
-    const buttons = Array.from(el.querySelectorAll('button')).filter(btn => {
-      return btn.id !== 'mindshield-fake-btn' && !btn.closest('#mindshield-wrapper');
-    });
-    
-    if (buttons.length > 0) {
-      return el;
+  const hostname = window.location.hostname;
+
+  // 1. ChatGPT-Specific Layout Engine:
+  // Targets strictly the inner, text-entering grey box instead of the outer white capsule
+  if (hostname.includes('chatgpt.com')) {
+    console.log("[MindShield] ChatGPT-specific text container targeted.");
+    return realInput.parentElement;
+  }
+
+  // 2. Gemini-Specific Layout Engine:
+  // Target strictly the .single-line-format to align exactly between the leading and trailing actions
+  if (hostname.includes('gemini.google.com')) {
+    console.log("[MindShield] Gemini-specific text container targeted.");
+    return realInput.closest('.single-line-format') || 
+           realInput.closest('.text-input-field') || 
+           realInput.closest('[class*="simplified-input-area"]') || 
+           realInput.closest('rich-textarea') || 
+           realInput.parentElement;
+  }
+
+  // 3. Adaptive LCA Layout Engine (Claude, Grok):
+  // Climbs the DOM tree to locate the outermost capsule wrapping both text and action buttons
+  const realBtn = document.querySelector('button[data-testid="send-button"]') || 
+                  document.querySelector('button[aria-label*="Send"]') ||
+                  document.querySelector('button[class*="send"]') ||
+                  document.querySelector('button[data-testid*="submit"]') ||
+                  document.querySelector('g-icon-button[icon="send"]');
+
+  if (realBtn) {
+    let el = realInput.parentElement;
+    while (el && el !== document.body) {
+      if (el.contains(realBtn)) {
+        return el;
+      }
+      el = el.parentElement;
     }
-    el = el.parentElement;
   }
 
   const form = realInput.closest('form');
@@ -83,7 +106,7 @@ function injectOverlay() {
 
   if (document.getElementById('mindshield-wrapper')) return;
 
-  // Resolve the true outermost capsule wrapper using the dynamic climbing algorithm
+  // Resolve the true outermost capsule wrapper using our platform-aware algorithm
   const container = getOverlayContainer(realInput);
   if (!container) return;
 
@@ -299,21 +322,22 @@ function releaseAndSubmit(text) {
 
   setTimeout(() => {
     const container = getOverlayContainer(realInput);
+    const buttons = container ? Array.from(container.querySelectorAll('button')) : [];
     
-    // FIX: Filter out our own custom #mindshield-fake-btn using Javascript checks so it can never be targeted
-    const buttons = container ? Array.from(container.querySelectorAll('button')).filter(btn => {
+    // Filter out our custom button using Javascript checks so it can never be targeted
+    const nativeButtons = buttons.filter(btn => {
       return btn.id !== 'mindshield-fake-btn' && !btn.closest('#mindshield-wrapper');
-    }) : [];
+    });
     
-    let realBtn = buttons[buttons.length - 1];
+    let realBtn = nativeButtons[nativeButtons.length - 1];
 
-    // String fallbacks if the DOM layout is empty
+    // String fallbacks if the DOM layout is empty or if we are using the isolated ChatGPT/Gemini containers
     if (!realBtn) {
       realBtn = document.querySelector('button[data-testid="send-button"]') || 
                 document.querySelector('button[aria-label*="Send"]') ||
                 document.querySelector('button[class*="send"]') ||
                 document.querySelector('button[data-testid*="submit"]') ||
-                document.querySelector('g-icon-button[icon="send"]');
+                document.querySelector('g-icon-button[icon="send"]'); // Gemini send button icon wrapper
     }
 
     const form = realInput.closest('form');
