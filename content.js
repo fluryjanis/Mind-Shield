@@ -3,7 +3,8 @@ const REAL_INPUT_SELECTORS = [
   'div[contenteditable="true"]',              // Claude, Gemini, Rich Text Editors
   'textarea[placeholder*="Grok"]',            // Grok.com
   'textarea[placeholder*="Ask"]',             // General fallback
-  'textarea'                                  // Generic fallback
+  'textarea[placeholder*="type"]',            // Standard fallback
+  'textarea[placeholder*="message"]'          // Standard fallback
 ];
 
 let activeLockInterval = null;
@@ -21,8 +22,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // Locates the native chat input field
 function getRealInput() {
   for (const selector of REAL_INPUT_SELECTORS) {
-    const el = document.querySelector(selector);
-    if (el) return el;
+    const elements = document.querySelectorAll(selector);
+    for (const el of elements) {
+      const rect = el.getBoundingClientRect();
+      
+      // Verify the element is visible, rendered, and has physical dimensions
+      if (
+        rect.width > 10 && 
+        rect.height > 10 && 
+        window.getComputedStyle(el).display !== 'none' &&
+        window.getComputedStyle(el).visibility !== 'hidden'
+      ) {
+        return el;
+      }
+    }
   }
   return null;
 }
@@ -41,7 +54,7 @@ function getOverlayContainer(realInput) {
   }
 
   // 2. Gemini-Specific Layout Engine:
-  // Target strictly the .single-line-format to align exactly between the leading and trailing actions
+  // Target strictly the .single-line-format container as discovered in DOM inspection
   if (hostname.includes('gemini.google.com')) {
     console.log("[MindShield] Gemini-specific text container targeted.");
     return realInput.closest('.single-line-format') || 
@@ -51,26 +64,36 @@ function getOverlayContainer(realInput) {
            realInput.parentElement;
   }
 
-  // 3. Adaptive LCA Layout Engine (Claude, Grok):
-  // Climbs the DOM tree to locate the outermost capsule wrapping both text and action buttons
+  // 3. Grok-Specific Layout Engine (grok.com & x.com/grok):
+  // Target strictly the chat-input element to keep the surrounding model selector and attachments visible
+  if (hostname.includes('grok.com') || hostname.includes('x.com')) {
+    console.log("[MindShield] Grok-specific text container targeted.");
+    return realInput.closest('[data-testid="chat-input"]') || realInput.parentElement;
+  }
+
+  // 4. Adaptive LCA Layout Engine (Claude):
+  // Climbs the DOM tree with a strict depth limit to locate the outermost capsule
   const realBtn = document.querySelector('button[data-testid="send-button"]') || 
                   document.querySelector('button[aria-label*="Send"]') ||
                   document.querySelector('button[class*="send"]') ||
                   document.querySelector('button[data-testid*="submit"]') ||
                   document.querySelector('g-icon-button[icon="send"]');
 
-  if (realBtn) {
-    let el = realInput.parentElement;
-    while (el && el !== document.body) {
-      if (el.contains(realBtn)) {
-        return el;
-      }
-      el = el.parentElement;
+  let el = realInput.parentElement;
+  let depth = 0;
+  
+  // Cap climbing depth at 5 levels. Prevents the climber from escaping the input zone and reaching <main>
+  while (el && el !== document.body && depth < 5) {
+    const buttons = Array.from(el.querySelectorAll('button')).filter(btn => {
+      return btn.id !== 'mindshield-fake-btn' && !btn.closest('#mindshield-wrapper');
+    });
+    
+    if (buttons.length > 0) {
+      return el;
     }
+    el = el.parentElement;
+    depth++;
   }
-
-  const form = realInput.closest('form');
-  if (form) return form;
 
   return realInput.parentElement;
 }
@@ -94,6 +117,8 @@ function setReactInputValue(inputElement, text) {
 
 // Builds the visual overlay over the native prompt area
 function injectOverlay() {
+  const isGrok = window.location.hostname.includes('grok.com') || window.location.hostname.includes('x.com');
+
   // Safe path guard for Twitter (x.com) to prevent overlaying your normal tweet compose boxes
   if (window.location.hostname.includes('x.com')) {
     if (!window.location.pathname.includes('/grok')) {
@@ -191,6 +216,29 @@ function injectOverlay() {
   wrapper.appendChild(fakeInput);
   wrapper.appendChild(fakeBtn);
   container.appendChild(wrapper);
+
+  // On Grok, we hide our custom fake button to keep their native model changing dropdown & paperclip visible
+  if (isGrok) {
+    fakeBtn.style.display = 'none';
+    
+    // Bind click interceptor directly to Grok's real send button
+    const realBtn = document.querySelector('button[aria-label="Grok something"]') || // FIX: Twitter Grok send button identifier
+                    document.querySelector('button[class*="rounded-"]') || 
+                    document.querySelector('button[aria-label*="Send"]') ||
+                    document.querySelector('button[class*="send"]') ||
+                    document.querySelector('[data-testid="grokSendButton"]') || // grok.com identifier
+                    document.querySelector('[data-testid="grokSend"]'); // Secondary Twitter Grok identifier
+                    
+    if (realBtn) {
+      realBtn.addEventListener('click', (e) => {
+        if (isBypassing) return;
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        processPrompt(fakeInput);
+      }, true);
+    }
+  }
 
   fakeBtn.addEventListener('click', () => processPrompt(fakeInput));
   
@@ -333,10 +381,13 @@ function releaseAndSubmit(text) {
 
     // String fallbacks if the DOM layout is empty or if we are using the isolated ChatGPT/Gemini containers
     if (!realBtn) {
-      realBtn = document.querySelector('button[data-testid="send-button"]') || 
+      realBtn = document.querySelector('button[aria-label="Grok something"]') || // FIX: Target X.com's stable accessibility label
+                document.querySelector('button[data-testid="send-button"]') || 
                 document.querySelector('button[aria-label*="Send"]') ||
                 document.querySelector('button[class*="send"]') ||
                 document.querySelector('button[data-testid*="submit"]') ||
+                document.querySelector('[data-testid="grokSendButton"]') || // grok.com send button
+                document.querySelector('[data-testid="grokSend"]') || // Twitter's Grok send button
                 document.querySelector('g-icon-button[icon="send"]'); // Gemini send button icon wrapper
     }
 
@@ -378,6 +429,7 @@ function activateLockoutState(lockUntil, autoSubmitText = '') {
   fakeBtn.disabled = true;
   wrapper.style.borderColor = '#ff4d4d';
 
+  // Locks fake elements and starts visual countdown
   function updateTimer() {
     const remaining = Math.max(0, Math.round((lockUntil - Date.now()) / 1000));
     if (remaining <= 0) {
