@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <meta
+    name="description"
+    content="MindShield v1.1.0 update: improved prompt detection, reduced false positives, better UX, and a smaller extension."
+  >
+
+  <title>MindShield v1.1.0 — Improving Detection & UX</title>
+
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --border: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+    }
+
+    .container {
+      max-width: 800px;
+      width: calc(100% - 2rem);
+      margin: 0 auto;
+    }
+
+    /* Header */
+
+    header {
+      padding: 4rem 0 3rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .back {
+      display: inline-block;
+      margin-bottom: 2rem;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+    }
+
+    .back:hover {
+      color: var(--accent);
+    }
+
+    .version {
+      display: inline-block;
+      margin-bottom: 1rem;
+      padding: 0.3rem 0.7rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--accent);
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+
+    h1 {
+      margin: 0 0 1rem;
+      font-size: clamp(2.2rem, 6vw, 3.5rem);
+      line-height: 1.1;
+      letter-spacing: -0.04em;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 1.15rem;
+    }
+
+    .date {
+      margin-top: 1rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    /* Article */
+
+    article {
+      padding: 3.5rem 0;
+    }
+
+    section {
+      margin-bottom: 3.5rem;
+    }
+
+    h2 {
+      margin: 0 0 1rem;
+      font-size: 1.8rem;
+      letter-spacing: -0.02em;
+    }
+
+    h3 {
+      margin: 2rem 0 0.6rem;
+      font-size: 1.2rem;
+    }
+
+    p {
+      margin: 0 0 1rem;
+      color: var(--muted);
+    }
+
+    strong {
+      color: var(--text);
+    }
+
+    .highlight {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+    }
+
+    .highlight p {
+      margin: 0;
+    }
+
+    /* Lists */
+
+    ul {
+      color: var(--muted);
+      padding-left: 1.5rem;
+    }
+
+    li {
+      margin-bottom: 0.6rem;
+    }
+
+    /* Code */
+
+    code {
+      background: #111827;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.15rem 0.35rem;
+      color: var(--accent);
+      font-size: 0.9em;
+    }
+
+    /* CTA */
+
+    .cta {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 2rem;
+      text-align: center;
+      margin-top: 3rem;
+    }
+
+    .cta h2 {
+      margin-bottom: 0.75rem;
+    }
+
+    .cta p {
+      max-width: 600px;
+      margin: 0 auto 1.5rem;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 0.85rem 1.5rem;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #000;
+      text-decoration: none;
+      font-weight: 700;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    /* Footer */
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem 0;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    footer a {
+      color: var(--muted);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      color: var(--accent);
+    }
+
+    /* Mobile */
+
+    @media (max-width: 650px) {
+      header {
+        padding-top: 3rem;
+      }
+
+      article {
+        padding-top: 2.5rem;
+      }
+
+      section {
+        margin-bottom: 2.8rem;
+      }
+
+      .highlight,
+      .cta {
+        padding: 1.4rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="container">
+
+      <a
+        class="back"
+        href="https://fluryjanis.github.io/Mind-Shield/"
+      >
+        ← Back to MindShield
+      </a>
+
+      <div>
+        <span class="version">MindShield v1.1.0</span>
+      </div>
+
+      <h1>Improving Detection & UX</h1>
+
+      <p class="subtitle">
+        A small update focused on making MindShield more accurate,
+        less intrusive, and easier to use.
+      </p>
+
+      <p class="date">
+        MindShield Development Update
+      </p>
+
+    </div>
+  </header>
+
+
+  <main>
+
+    <article>
+
+      <div class="container">
+
+        <!-- Introduction -->
+
+        <section>
+
+          <h2>Why this update?</h2>
+
+          <p>
+            MindShield v1.1.0 is a focused improvement to both the
+            user experience and the way MindShield decides when a
+            prompt should trigger a reflection period.
+          </p>
+
+          <p>
+            The goal wasn't to add a huge number of new features.
+            Instead, this update focuses on making the existing idea
+            work better.
+          </p>
+
+          <div class="highlight">
+            <p>
+              <strong>
+                Less interruption. Better detection. A cleaner extension.
+              </strong>
+            </p>
+          </div>
+
+        </section>
+
+
+        <!-- Prompt Bar -->
+
+        <section>
+
+          <h2>📝 A better prompt bar</h2>
+
+          <p>
+            The prompt bar has been visually updated with a gray
+            inner area.
+          </p>
+
+          <p>
+            This is a relatively small change, but it makes the input
+            area easier to distinguish from the surrounding interface
+            and gives the extension a more polished appearance.
+          </p>
+
+        </section>
+
+
+        <!-- Autofocus -->
+
+        <section>
+
+          <h2>⚡ Automatic focusing</h2>
+
+          <p>
+            MindShield now automatically focuses the prompt input when
+            appropriate.
+          </p>
+
+          <p>
+            This removes unnecessary clicks and makes interacting with
+            the extension feel more immediate.
+          </p>
+
+        </section>
+
+
+        <!-- Detection -->
+
+        <section>
+
+          <h2>❓ Focusing detection on questions</h2>
+
+          <p>
+            One of the biggest changes in v1.1.0 is how MindShield
+            approaches prompt detection.
+          </p>
+
+          <p>
+            Earlier versions could sometimes interpret ordinary
+            conversation or information sharing as a potential
+            "brain drain" prompt.
+          </p>
+
+          <p>
+            That's not what MindShield is supposed to prevent.
+          </p>
+
+          <div class="highlight">
+            <p>
+              MindShield should intervene when you're about to
+              outsource thinking — not when you're simply talking
+              to an AI.
+            </p>
+          </div>
+
+          <p>
+            Version 1.1.0 therefore narrows the detection system to
+            <strong>questions</strong>.
+          </p>
+
+          <p>
+            This significantly reduces false positives from casual
+            discussion, statements, and information sharing.
+          </p>
+
+        </section>
+
+
+        <!-- AI Tweaks -->
+
+        <section>
+
+          <h2>🧠 Smarter prompt classification</h2>
+
+          <p>
+            Simply detecting a question isn't enough.
+          </p>
+
+          <p>
+            Some questions are exactly the kind of thing AI is useful
+            for. Others are questions you could reasonably answer
+            yourself with a little thought.
+          </p>
+
+          <p>
+            The classification system has therefore been adjusted to
+            better distinguish between these situations.
+          </p>
+
+          <h3>Knowledge-based questions</h3>
+
+          <p>
+            Questions that primarily require retrieving information
+            should be less likely to trigger the reflection mechanism.
+          </p>
+
+          <p>
+            For example, asking an AI about a historical fact or
+            looking for information you don't already know is a
+            legitimate use of an AI assistant.
+          </p>
+
+          <h3>Thinking questions</h3>
+
+          <p>
+            MindShield is more interested in questions where the
+            answer could reasonably come from your own reasoning,
+            judgment, or problem-solving.
+          </p>
+
+          <p>
+            These are the situations where a short pause can be useful.
+          </p>
+
+        </section>
+
+
+        <!-- Cleanup -->
+
+        <section>
+
+          <h2>🧹 Removing unnecessary bloat</h2>
+
+          <p>
+            v1.1.0 also removes files and other unnecessary project
+            bloat that was no longer needed.
+          </p>
+
+          <p>
+            This reduces the extension's size and makes the codebase
+            easier to inspect and understand.
+          </p>
+
+          <p>
+            For an open-source project, keeping the repository clean
+            matters. There shouldn't be unnecessary files getting in
+            the way when someone wants to understand how MindShield
+            works.
+          </p>
+
+        </section>
+
+
+        <!-- Summary -->
+
+        <section>
+
+          <h2>What's changed?</h2>
+
+          <ul>
+            <li>Improved prompt bar appearance</li>
+            <li>Added automatic input focusing</li>
+            <li>Reduced false positives by focusing detection on questions</li>
+            <li>Improved classification of knowledge-based questions</li>
+            <li>Improved detection of questions that can be answered through independent reasoning</li>
+            <li>Removed unnecessary project files and bloat</li>
+            <li>Improved overall user experience</li>
+          </ul>
+
+        </section>
+
+
+        <!-- Philosophy -->
+
+        <section>
+
+          <h2>The goal hasn't changed</h2>
+
+          <p>
+            MindShield isn't designed to stop people from using AI.
+          </p>
+
+          <p>
+            AI can be an incredibly useful tool for learning, research,
+            programming, creativity, and countless other tasks.
+          </p>
+
+          <p>
+            The purpose of MindShield is simply to introduce a small
+            moment of reflection when AI starts becoming the automatic
+            answer to something you could have thought through yourself.
+          </p>
+
+          <div class="highlight">
+            <p>
+              <strong>
+                AI should be a partner, not a replacement for thinking.
+              </strong>
+            </p>
+          </div>
+
+        </section>
+
+
+        <!-- CTA -->
+
+        <div class="cta">
+
+          <h2>Try MindShield v1.1.0</h2>
+
+          <p>
+            Add a small reflection step to your AI workflow while
+            keeping your prompts private and processed locally.
+          </p>
+
+          <a
+            href="https://github.com/fluryjanis/Mind-Shield/releases/tag/v1.1.0"
+            class="btn"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            View the v1.1.0 Release
+          </a>
+
+        </div>
+
+      </div>
+
+    </article>
+
+  </main>
+
+
+  <footer>
+
+    <div class="container">
+
+      <p>
+        MindShield ·
+        <a href="https://fluryjanis.github.io/Mind-Shield/">
+          MindShield Website
+        </a>
+        ·
+        <a
+          href="https://github.com/fluryjanis/Mind-Shield"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          GitHub
+        </a>
+      </p>
+
+    </div>
+
+  </footer>
+
+</body>
+</html>
