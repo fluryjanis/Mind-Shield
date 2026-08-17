@@ -300,6 +300,50 @@
       font-weight: 600;
     }
 
+    /* Blog */
+
+    .blog {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .blog-post {
+      display: block;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-decoration: none;
+      color: var(--text);
+      transition:
+        transform 0.2s ease,
+        border-color 0.2s ease,
+        background 0.2s ease;
+    }
+
+    .blog-post:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent);
+      background: var(--card-hover);
+    }
+
+    .blog-post h3 {
+      margin: 0 0 0.4rem;
+      font-size: 1.2rem;
+    }
+
+    .blog-post .date {
+      color: var(--accent);
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 0.6rem;
+    }
+
+    .blog-post p {
+      margin: 0;
+      color: var(--muted);
+    }
+
     /* CTA */
 
     .final-cta {
@@ -389,7 +433,7 @@
             target="_blank"
             rel="noopener noreferrer"
           >
-            Firefox
+            🦊 Firefox
           </a>
 
           <a
@@ -398,7 +442,7 @@
             target="_blank"
             rel="noopener noreferrer"
           >
-            Chrome
+            🌐 Chrome
           </a>
 
         </div>
@@ -645,7 +689,9 @@
           </p>
 
           <p>
-            <strong>No tracking. No analytics. No cloud prompt analysis.</strong>
+            <strong>
+              No tracking. No analytics. No cloud prompt analysis.
+            </strong>
           </p>
 
           <p>
@@ -659,6 +705,51 @@
             rel="noopener noreferrer"
           >
             View the source code on GitHub →
+          </a>
+
+        </div>
+
+      </div>
+
+    </section>
+
+
+    <!-- BLOG -->
+
+    <section>
+
+      <div class="container">
+
+        <div class="section-heading">
+
+          <h2>Development & Blog</h2>
+
+          <p>
+            Development updates, release notes, and thoughts behind MindShield.
+          </p>
+
+        </div>
+
+        <div class="blog">
+
+          <a
+            href="blog/mindshield-1.1.0.html"
+            class="blog-post"
+          >
+
+            <div class="date">
+              August 2026 · Version 1.1.0
+            </div>
+
+            <h3>
+              MindShield 1.1.0 — Improving the Reflection Experience
+            </h3>
+
+            <p>
+              A look at the UI improvements, prompt detection changes,
+              user experience updates, and cleanup introduced in MindShield 1.1.0.
+            </p>
+
           </a>
 
         </div>
