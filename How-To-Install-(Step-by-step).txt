@@ -1,0 +1,9 @@
+1. Extract the ZIP to a folder.
+
+2. Open chrome://extensions/.
+
+3. Enable Developer mode.
+
+4. Click Load unpacked.
+
+5. Select the extracted MindShield folder.
