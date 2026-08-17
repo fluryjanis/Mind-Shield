@@ -12,7 +12,7 @@ It doesn't try to stop you from using AI. It helps you decide **when you actuall
 
 ### 🌐 Chrome / Chromium
 
-**[⬇️ Download MindShield v1.0.2 for Chrome](https://github.com/fluryjanis/Mind-Shield/releases/tag/v1.0.2)**
+**[⬇️ Download MindShield v1.1.0 for Chrome]((https://github.com/fluryjanis/Mind-Shield/releases/tag/v1.1.0))**
 
 Chrome and Chromium-based browsers currently require a manual installation.
 
