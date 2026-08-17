@@ -1,4 +1,5 @@
 const REAL_INPUT_SELECTORS = [
+  'rich-textarea div[contenteditable="true"]', // Gemini specific
   'textarea[id="prompt-textarea"]',          // ChatGPT
   'div[contenteditable="true"]',              // Claude, Gemini, Rich Text Editors
   'textarea[placeholder*="Grok"]',            // Grok.com
@@ -7,10 +8,32 @@ const REAL_INPUT_SELECTORS = [
   'textarea[placeholder*="message"]'          // Standard fallback
 ];
 
+let cachedRealInput = null;
+let cachedContainer = null;
+let containerResizeObserver = null;
 let activeLockInterval = null;
-let isBypassing = false; // Prevent the focus listener from redirecting during programmatical submission
+let activeSyncInterval = null;
+let initialFocusLockInterval = null;
+let syncDebounceTimer = null;
+let mutationThrottleTimer = null;
+let lastSyncedText = '';
+let isBypassing = false;
 
-// Listen for diagnostic log relays forwarded from the background and offscreen threads
+// Global Capturing Focus Shield: Intercepts React/Claude/Gemini autofocus whenever native input renders
+document.addEventListener('focusin', (e) => {
+  if (isBypassing) return;
+  const fakeInput = document.getElementById('mindshield-fake-input');
+  if (!fakeInput || fakeInput.disabled || document.activeElement === fakeInput) return;
+
+  const realInput = getRealInput();
+  if (realInput && (e.target === realInput || realInput.contains(e.target))) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    fakeInput.focus();
+  }
+}, true);
+
+// Listen for diagnostic log relays forwarded from background/offscreen
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'relayLog') {
     if (window === window.top) {
@@ -19,20 +42,97 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-// Locates the native chat input field
-function getRealInput() {
+// Holds focus aggressively during the initial page loading & framework mounting phase
+function startInitialFocusLock(durationMs = 5000) {
+  if (initialFocusLockInterval) clearInterval(initialFocusLockInterval);
+  const startTime = Date.now();
+
+  initialFocusLockInterval = setInterval(() => {
+    if (Date.now() - startTime > durationMs || isBypassing) {
+      clearInterval(initialFocusLockInterval);
+      initialFocusLockInterval = null;
+      return;
+    }
+
+    const fakeInput = document.getElementById('mindshield-fake-input');
+    if (fakeInput && !fakeInput.disabled) {
+      const active = document.activeElement;
+      const realInput = getRealInput();
+
+      if (!active || active === document.body || active === realInput || (realInput && realInput.contains(active))) {
+        fakeInput.focus();
+      }
+    }
+  }, 100);
+}
+
+// Triage prompt intent: 'INSTANT_LOCKOUT', 'KNOWLEDGE_PASS', 'THINKING_SCRUTINIZE', or 'GENERAL_PASS'
+function evaluatePromptIntent(text) {
+  const cleaned = text.trim();
+  if (!cleaned) return 'GENERAL_PASS';
+
+  // 1. Instant Factual Knowledge / Reference (Always Bypass AI Lockout)
+  const factualKnowledgePatterns = [
+    /^(what is the capital of|where is|when was|when did|who is|who was|who invented|who wrote)\b/i,
+    /^(what is the definition of|what does\s+[a-zA-Z0-9_-]+\s+mean|define\b)/i,
+    /^(what is the syntax for|how to declare|how to install|how to import|how to run|how to write a loop in)\b/i,
+    /^(atomic number of|boiling point of|distance between|population of|formula for)\b/i,
+    /^(translate\b|what is the spanish|what is the french|what is the german|what is the word for)\b/i
+  ];
+
+  for (const pattern of factualKnowledgePatterns) {
+    if (pattern.test(cleaned)) {
+      return 'KNOWLEDGE_PASS';
+    }
+  }
+
+  // 2. Direct Cognitive Outsourcing (INSTANT LOCKOUT)
+  const instantLockoutPatterns = [
+    /^(should i|what should i do|what would you do|if you were me|how would you handle|help me decide|which one is better for me|is it better to)\b/i,
+    /^(solve this|solve the following|solve this riddle|solve this puzzle|solve the math)\b/i,
+    /^(is\s+[a-zA-Z0-9_ -]+\s+better\s+(than|the)\s+[a-zA-Z0-9_ -]+)\b/i,
+    /^(what is your opinion on|what should my opinion be|who is right|who is wrong|in my situation)\b/i,
+    /^(give me arguments for|write a conclusion for|analyze my situation|make a choice for me)\b/i,
+    /^(why should i|how can i convince|what decision should i make|what do you think i should do)\b/i
+  ];
+
+  for (const pattern of instantLockoutPatterns) {
+    if (pattern.test(cleaned)) {
+      return 'INSTANT_LOCKOUT';
+    }
+  }
+
+  // 3. Ambiguous Questions (Send to local AI for zero-shot scrutiny)
+  const generalQuestionPattern = /^(what|why|how|when|where|who|whom|whose|which|can|could|would|should|will|shall|may|might|must|is|are|am|was|were|isn't|aren't|wasn't|weren't|do|does|did|don't|doesn't|didn't|has|have|had|haven't|hasn't|hadn't)\b/i;
+  if (cleaned.includes('?') || generalQuestionPattern.test(cleaned)) {
+    return 'THINKING_SCRUTINIZE';
+  }
+
+  return 'GENERAL_PASS';
+}
+
+function focusFakeInput(fakeInput) {
+  if (!fakeInput || fakeInput.disabled || isBypassing) return;
+  fakeInput.focus();
+}
+
+// Locates the native chat input field with caching
+function getRealInput(forceRefresh = false) {
+  if (!forceRefresh && cachedRealInput && cachedRealInput.isConnected) {
+    return cachedRealInput;
+  }
+
   for (const selector of REAL_INPUT_SELECTORS) {
     const elements = document.querySelectorAll(selector);
     for (const el of elements) {
       const rect = el.getBoundingClientRect();
-      
-      // Verify the element is visible, rendered, and has physical dimensions
       if (
         rect.width > 10 && 
         rect.height > 10 && 
         window.getComputedStyle(el).display !== 'none' &&
         window.getComputedStyle(el).visibility !== 'hidden'
       ) {
+        cachedRealInput = el;
         return el;
       }
     }
@@ -40,65 +140,50 @@ function getRealInput() {
   return null;
 }
 
-// Locates the outer container or capsule of the input area based on the platform
+// Locates the outer capsule of the input area based on the platform
 function getOverlayContainer(realInput) {
   if (!realInput) return null;
+  if (cachedContainer && cachedContainer.isConnected) {
+    return cachedContainer;
+  }
 
   const hostname = window.location.hostname;
+  let container = null;
 
-  // 1. ChatGPT-Specific Layout Engine:
-  // Targets strictly the inner, text-entering grey box instead of the outer white capsule
-  if (hostname.includes('chatgpt.com')) {
-    console.log("[MindShield] ChatGPT-specific text container targeted.");
-    return realInput.parentElement;
-  }
-
-  // 2. Gemini-Specific Layout Engine:
-  // Target strictly the .single-line-format container as discovered in DOM inspection
   if (hostname.includes('gemini.google.com')) {
-    console.log("[MindShield] Gemini-specific text container targeted.");
-    return realInput.closest('.single-line-format') || 
-           realInput.closest('.text-input-field') || 
-           realInput.closest('[class*="simplified-input-area"]') || 
-           realInput.closest('rich-textarea') || 
-           realInput.parentElement;
-  }
-
-  // 3. Grok-Specific Layout Engine (grok.com & x.com/grok):
-  // Target strictly the chat-input element to keep the surrounding model selector and attachments visible
-  if (hostname.includes('grok.com') || hostname.includes('x.com')) {
-    console.log("[MindShield] Grok-specific text container targeted.");
-    return realInput.closest('[data-testid="chat-input"]') || realInput.parentElement;
-  }
-
-  // 4. Adaptive LCA Layout Engine (Claude):
-  // Climbs the DOM tree with a strict depth limit to locate the outermost capsule
-  const realBtn = document.querySelector('button[data-testid="send-button"]') || 
-                  document.querySelector('button[aria-label*="Send"]') ||
-                  document.querySelector('button[class*="send"]') ||
-                  document.querySelector('button[data-testid*="submit"]') ||
-                  document.querySelector('g-icon-button[icon="send"]');
-
-  let el = realInput.parentElement;
-  let depth = 0;
-  
-  // Cap climbing depth at 5 levels. Prevents the climber from escaping the input zone and reaching <main>
-  while (el && el !== document.body && depth < 5) {
-    const buttons = Array.from(el.querySelectorAll('button')).filter(btn => {
-      return btn.id !== 'mindshield-fake-btn' && !btn.closest('#mindshield-wrapper');
-    });
-    
-    if (buttons.length > 0) {
-      return el;
+    container = realInput.closest('.single-line-format') || 
+                realInput.closest('rich-textarea') || 
+                realInput.parentElement;
+  } else if (hostname.includes('claude.ai')) {
+    container = realInput.closest('.relative.font-large') || 
+                realInput.closest('[class*="font-large"]') || 
+                realInput.parentElement;
+  } else if (hostname.includes('chatgpt.com')) {
+    container = realInput.parentElement;
+  } else if (hostname.includes('grok.com') || hostname.includes('x.com')) {
+    container = realInput.closest('[data-testid="chat-input"]') || realInput.parentElement;
+  } else {
+    let el = realInput.parentElement;
+    let depth = 0;
+    while (el && el !== document.body && depth < 5) {
+      const buttons = Array.from(el.querySelectorAll('button')).filter(btn => {
+        return btn.id !== 'mindshield-fake-btn' && !btn.closest('#mindshield-wrapper');
+      });
+      if (buttons.length > 0) {
+        container = el;
+        break;
+      }
+      el = el.parentElement;
+      depth++;
     }
-    el = el.parentElement;
-    depth++;
+    if (!container) container = realInput.parentElement;
   }
 
-  return realInput.parentElement;
+  cachedContainer = container;
+  return container;
 }
 
-// Bypasses React's virtual DOM bindings to force-inject text into its state
+// Injects text safely into React/Angular/Lit state
 function setReactInputValue(inputElement, text) {
   if (!inputElement) return;
   
@@ -106,131 +191,310 @@ function setReactInputValue(inputElement, text) {
     const nativeValueSetter = Object.getOwnPropertyDescriptor(
       HTMLTextAreaElement.prototype,
       "value"
-    ).set;
-    nativeValueSetter.call(inputElement, text);
+    )?.set;
+    if (nativeValueSetter) {
+      nativeValueSetter.call(inputElement, text);
+    } else {
+      inputElement.value = text;
+    }
     inputElement.dispatchEvent(new Event('input', { bubbles: true }));
   } else if (inputElement.getAttribute('contenteditable') !== null) {
-    inputElement.innerText = text;
+    const isGemini = window.location.hostname.includes('gemini.google.com');
+    if (isGemini) {
+      if (text.length === 0) {
+        inputElement.innerHTML = '<p><br></p>';
+      } else {
+        inputElement.innerHTML = `<p>${text.replace(/\n/g, '<br>')}</p>`;
+      }
+    } else {
+      inputElement.innerText = text;
+    }
     inputElement.dispatchEvent(new Event('input', { bubbles: true }));
   }
 }
 
-// Builds the visual overlay over the native prompt area
-function injectOverlay() {
-  const isGrok = window.location.hostname.includes('grok.com') || window.location.hostname.includes('x.com');
-
-  // Safe path guard for Twitter (x.com) to prevent overlaying your normal tweet compose boxes
-  if (window.location.hostname.includes('x.com')) {
-    if (!window.location.pathname.includes('/grok')) {
-      return; 
-    }
-  }
-
+// Background sync to trigger host capsule auto-expansion
+function syncTextToNativeInput() {
+  if (isBypassing) return;
+  const fakeInput = document.getElementById('mindshield-fake-input');
   const realInput = getRealInput();
-  if (!realInput) return;
+  if (!fakeInput || !realInput) return;
 
-  if (document.getElementById('mindshield-wrapper')) return;
+  const currentText = fakeInput.value;
+  if (currentText !== lastSyncedText) {
+    lastSyncedText = currentText;
+    setReactInputValue(realInput, currentText);
+  }
+}
 
-  // Resolve the true outermost capsule wrapper using our platform-aware algorithm
+// Positions the floating body overlay over the target container
+function updateOverlayPosition() {
+  const wrapper = document.getElementById('mindshield-wrapper');
+  const realInput = getRealInput();
+  if (!wrapper || !realInput) return;
+
   const container = getOverlayContainer(realInput);
   if (!container) return;
 
-  container.style.position = 'relative';
+  const rect = container.getBoundingClientRect();
+  if (rect.width === 0 || rect.height === 0) {
+    wrapper.style.display = 'none';
+    return;
+  }
 
-  // Redirect focus from the hidden real input back onto our visible fake input
-  // This defeats any focus-stealing scripts on Grok, ChatGPT, or Claude
-  realInput.addEventListener('focus', (e) => {
-    if (isBypassing) return;
-    const fakeInput = document.getElementById('mindshield-fake-input');
-    if (fakeInput && !fakeInput.disabled) {
-      e.preventDefault();
-      fakeInput.focus();
-    }
-  }, true);
+  wrapper.style.display = 'flex';
+  wrapper.style.top = `${rect.top}px`;
+  wrapper.style.left = `${rect.left}px`;
+  wrapper.style.width = `${rect.width}px`;
+  wrapper.style.height = `${rect.height}px`;
+}
 
-  // Dynamic border-radius query to automatically match the target platform's native capsule roundness
+// Builds the visual portal overlay attached directly to document.body
+function injectOverlay() {
+  const isClaude = window.location.hostname.includes('claude.ai');
+  const isGemini = window.location.hostname.includes('gemini.google.com');
+  const isGrok = window.location.hostname.includes('grok.com') || window.location.hostname.includes('x.com');
+
+  if (window.location.hostname.includes('x.com')) {
+    if (!window.location.pathname.includes('/grok')) return; 
+  }
+
+  const realInput = getRealInput(true);
+  if (!realInput) return;
+
+  const existingWrapper = document.getElementById('mindshield-wrapper');
+  if (existingWrapper && existingWrapper.isConnected) {
+    updateOverlayPosition();
+    return;
+  }
+
+  const container = getOverlayContainer(realInput);
+  if (!container) return;
+
+  realInput.setAttribute('tabindex', '-1');
+
   const computedStyle = window.getComputedStyle(container);
-  const inheritedBorderRadius = computedStyle.borderRadius || '12px';
+  const nativeRadius = parseInt(computedStyle.borderRadius, 10);
+  const roundedBorderRadius = isGemini 
+    ? '16px' 
+    : (isClaude ? '18px' : ((!isNaN(nativeRadius) && nativeRadius > 16) ? computedStyle.borderRadius : '26px'));
 
   const wrapper = document.createElement('div');
   wrapper.id = 'mindshield-wrapper';
   Object.assign(wrapper.style, {
-    position: 'absolute',
-    top: '0',
-    left: '0',
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#171717',
-    zIndex: '9999',
-    borderRadius: inheritedBorderRadius, // Pixel-perfect inheritance
+    position: 'fixed',
+    zIndex: '2147483647',
+    backgroundColor: isGemini ? 'transparent' : ((isClaude) ? '#1f1f23' : '#171719'),
+    borderRadius: roundedBorderRadius,
     display: 'flex',
     alignItems: 'center',
-    padding: '8px 16px',
+    padding: isGemini ? '0' : (isClaude ? '4px 6px' : '6px 10px'),
     boxSizing: 'border-box',
-    border: '1px solid #444',
-    fontFamily: 'system-ui, sans-serif',
-    transition: 'border-color 0.3s'
+    border: isGemini ? 'none' : '1px solid rgba(255, 255, 255, 0.12)',
+    boxShadow: isGemini ? 'none' : '0 4px 20px rgba(0, 0, 0, 0.25)',
+    fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+    cursor: 'text',
+    overflow: 'hidden'
+  });
+
+  const innerBox = document.createElement('div');
+  innerBox.id = 'mindshield-inner-box';
+  Object.assign(innerBox.style, {
+    flex: '1',
+    width: '100%',
+    height: '100%',
+    backgroundColor: isGemini ? '#26272b' : '#2b2b30',
+    borderRadius: isGemini ? '16px' : (isClaude ? '12px' : '20px'),
+    border: '1px solid rgba(255, 255, 255, 0.08)',
+    display: 'flex',
+    alignItems: 'center',
+    padding: isGemini ? '2px 14px' : '4px 12px',
+    boxSizing: 'border-box',
+    overflow: 'hidden'
   });
 
   const fakeInput = document.createElement('textarea');
   fakeInput.id = 'mindshield-fake-input';
   fakeInput.placeholder = "Protecting your mind... Type your prompt here.";
+  fakeInput.setAttribute('tabindex', '0');
+  
   Object.assign(fakeInput.style, {
     width: '100%',
     height: '100%',
-    maxHeight: '120px',
+    minHeight: '24px',
     background: 'transparent',
     border: 'none',
     outline: 'none',
-    color: '#ECECF1',
+    color: '#F3F3F5',
+    caretColor: '#FFFFFF',
     fontSize: '15px',
+    lineHeight: isGemini ? '24px' : '20px',
     resize: 'none',
     fontFamily: 'inherit',
-    paddingTop: '8px',
-    boxSizing: 'border-box'
+    paddingTop: isGemini ? '8px' : '4px',
+    paddingBottom: isGemini ? '4px' : '4px',
+    boxSizing: 'border-box',
+    scrollbarWidth: 'none',
+    cursor: 'text'
   });
+
+  // Intercept image/file pastes and forward them directly to the native input
+  fakeInput.addEventListener('paste', (e) => {
+    const clipboardData = e.clipboardData;
+    if (!clipboardData) return;
+
+    const hasFiles = clipboardData.files && clipboardData.files.length > 0;
+    let hasImageItem = false;
+    if (clipboardData.items) {
+      for (let i = 0; i < clipboardData.items.length; i++) {
+        if (clipboardData.items[i].type.startsWith('image/') || clipboardData.items[i].kind === 'file') {
+          hasImageItem = true;
+          break;
+        }
+      }
+    }
+
+    if (hasFiles || hasImageItem) {
+      const real = getRealInput();
+      if (real) {
+        isBypassing = true;
+        try {
+          const dt = new DataTransfer();
+          for (let i = 0; i < clipboardData.files.length; i++) {
+            dt.items.add(clipboardData.files[i]);
+          }
+          const text = clipboardData.getData('text/plain');
+          if (text) {
+            dt.setData('text/plain', text);
+          }
+
+          const pasteEvt = new ClipboardEvent('paste', {
+            bubbles: true,
+            cancelable: true,
+            clipboardData: dt
+          });
+
+          real.dispatchEvent(pasteEvt);
+          console.log("[MindShield] Image/File clipboard paste successfully forwarded to native prompt area.");
+        } catch (err) {
+          console.warn("[MindShield] Failed to forward image paste event:", err);
+        } finally {
+          setTimeout(() => { isBypassing = false; }, 120);
+        }
+      }
+    }
+  });
+
+  // Forward drag-and-drop file operations to native prompt area
+  wrapper.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    const real = getRealInput();
+    if (real) {
+      const dragEvt = new DragEvent('dragover', {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer: e.dataTransfer
+      });
+      real.dispatchEvent(dragEvt);
+    }
+  });
+
+  wrapper.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const real = getRealInput();
+    if (real) {
+      const dropEvt = new DragEvent('drop', {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer: e.dataTransfer
+      });
+      real.dispatchEvent(dropEvt);
+      console.log("[MindShield] Dropped file/image forwarded to native prompt area.");
+    }
+  });
+
+  const handleFocusClick = (e) => {
+    if (e.target.id !== 'mindshield-fake-btn' && !e.target.closest('#mindshield-fake-btn')) {
+      focusFakeInput(fakeInput);
+    }
+  };
+
+  wrapper.addEventListener('click', handleFocusClick);
+  innerBox.addEventListener('click', handleFocusClick);
+
+  const prefilledText = (realInput.value || realInput.innerText || '').trim();
+  if (prefilledText.length > 0) {
+    fakeInput.value = prefilledText;
+    lastSyncedText = prefilledText;
+  }
 
   const fakeBtn = document.createElement('button');
   fakeBtn.id = 'mindshield-fake-btn';
+  fakeBtn.setAttribute('tabindex', '0');
+  fakeBtn.setAttribute('title', 'Send message');
   fakeBtn.innerHTML = `
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M22 2L11 13M22 2L15 22L11 13M11 13L2 9L22 2" stroke="#ECECF1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 19V5M12 5L5 12M12 5L19 12" stroke="#FFFFFF" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
   `;
   Object.assign(fakeBtn.style, {
-    background: '#202123',
-    border: '1px solid #4e4f50',
-    borderRadius: '8px',
-    padding: '8px',
+    width: '34px',
+    height: '34px',
+    minWidth: '34px',
+    minHeight: '34px',
+    background: '#38383e',
+    border: '1px solid rgba(255, 255, 255, 0.12)',
+    borderRadius: '50%',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: '8px',
-    transition: 'background 0.2s'
+    transition: 'all 0.2s ease',
+    alignSelf: 'flex-end',
+    marginBottom: '2px',
+    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)'
   });
 
-  fakeBtn.onmouseover = () => fakeBtn.style.background = '#343541';
-  fakeBtn.onmouseout = () => fakeBtn.style.background = '#202123';
+  fakeBtn.onmouseover = () => fakeBtn.style.background = '#50505a';
+  fakeBtn.onmouseout = () => fakeBtn.style.background = '#38383e';
 
-  wrapper.appendChild(fakeInput);
+  innerBox.appendChild(fakeInput);
+  wrapper.appendChild(innerBox);
   wrapper.appendChild(fakeBtn);
-  container.appendChild(wrapper);
 
-  // On Grok, we hide our custom fake button to keep their native model changing dropdown & paperclip visible
-  if (isGrok) {
+  document.body.appendChild(wrapper);
+  updateOverlayPosition();
+
+  if (containerResizeObserver) containerResizeObserver.disconnect();
+  containerResizeObserver = new ResizeObserver(() => updateOverlayPosition());
+  containerResizeObserver.observe(container);
+
+  // Focus immediately upon mounting and lock focus during framework initialization
+  focusFakeInput(fakeInput);
+  startInitialFocusLock(5000);
+
+  if (activeSyncInterval) clearInterval(activeSyncInterval);
+  activeSyncInterval = setInterval(syncTextToNativeInput, 500);
+
+  fakeInput.addEventListener('input', () => {
+    clearTimeout(syncDebounceTimer);
+    syncDebounceTimer = setTimeout(syncTextToNativeInput, 300);
+  });
+
+  if (isClaude || isGemini || isGrok) {
     fakeBtn.style.display = 'none';
-    
-    // Bind click interceptor directly to Grok's real send button
-    const realBtn = document.querySelector('button[aria-label="Grok something"]') || // FIX: Twitter Grok send button identifier
-                    document.querySelector('button[class*="rounded-"]') || 
-                    document.querySelector('button[aria-label*="Send"]') ||
-                    document.querySelector('button[class*="send"]') ||
-                    document.querySelector('[data-testid="grokSendButton"]') || // grok.com identifier
-                    document.querySelector('[data-testid="grokSend"]'); // Secondary Twitter Grok identifier
-                    
-    if (realBtn) {
-      realBtn.addEventListener('click', (e) => {
+
+    const nativeSendBtn = document.querySelector('button[aria-label*="Send"]') ||
+                          document.querySelector('button[aria-label*="send"]') ||
+                          document.querySelector('button[data-testid*="send"]') ||
+                          document.querySelector('g-icon-button[icon="send"]') ||
+                          document.querySelector('button[aria-label="Grok something"]') ||
+                          document.querySelector('[data-testid="grokSendButton"]') ||
+                          document.querySelector('[data-testid="grokSend"]');
+
+    if (nativeSendBtn) {
+      nativeSendBtn.addEventListener('click', (e) => {
         if (isBypassing) return;
         e.preventDefault();
         e.stopPropagation();
@@ -245,11 +509,11 @@ function injectOverlay() {
   fakeInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      clearTimeout(syncDebounceTimer);
       processPrompt(fakeInput);
     }
   });
 
-  // Check initial download/install state once overlay renders
   chrome.storage.local.get(['mindshield_download_status', 'mindshield_download_progress', 'mindshield_download_file', 'mindshield_download_error'], (result) => {
     if (result.mindshield_download_status === 'downloading') {
       updateOverlayDownloadState('downloading', result.mindshield_download_progress || 0, result.mindshield_download_file);
@@ -259,33 +523,21 @@ function injectOverlay() {
   });
 }
 
-// Process the input prompt
+// Window resize & scroll positioning
+window.addEventListener('scroll', updateOverlayPosition, { capture: true, passive: true });
+window.addEventListener('resize', updateOverlayPosition, { passive: true });
+
+// Process prompt inputs
 function processPrompt(fakeInput) {
   const text = fakeInput.value.trim();
-  
-  // If the text area is completely empty, do nothing
   if (text.length === 0) return;
 
-  // If the prompt is short (1 or 2 characters, like "??"), bypass AI checks and submit immediately
   if (text.length < 3) {
-    console.log("[MindShield] Short prompt bypass submitted:", text);
     releaseAndSubmit(text);
     return;
   }
 
-  console.log("[MindShield] Processing prompt from overlay:", text);
-
-  // Instantly disable inputs and show a "Checking" visual state on the overlay
-  const fakeBtn = document.getElementById('mindshield-fake-btn');
-  const wrapper = document.getElementById('mindshield-wrapper');
-  if (fakeBtn && wrapper) {
-    fakeInput.disabled = true;
-    fakeBtn.disabled = true;
-    fakeInput.placeholder = "🧠 Checking your prompt with local AI... Please wait.";
-    wrapper.style.borderColor = '#10a37f'; // Teal checking border
-  }
-
-  // Immediate Regex Guard to block basic arithmetic expressions (e.g. "1+1", "5 * 10", "12/3") instantly
+  // Elementary math guard: block basic calculations immediately
   const simpleMathRegex = /^[\d\s+\-*/()=]+$/;
   const hasLetters = /[a-zA-Z]/.test(text);
   if (simpleMathRegex.test(text) && !hasLetters && text.length < 15) {
@@ -300,12 +552,51 @@ function processPrompt(fakeInput) {
     return;
   }
 
+  const intent = evaluatePromptIntent(text);
+
+  // 1. Direct Instant Lockout for obvious reasoning/decision outsourcing
+  if (intent === 'INSTANT_LOCKOUT') {
+    console.log("[MindShield] Direct cognitive outsourcing detected. Initiating lockout.");
+    const cooldownTime = Date.now() + (5 * 1000);
+    chrome.storage.local.set({ 
+      mindshield_lock_until: cooldownTime,
+      mindshield_lock_text: text 
+    }, () => {
+      activateLockoutState(cooldownTime, text);
+    });
+    return;
+  }
+
+  // 2. Knowledge or general non-questions pass through instantly
+  if (intent === 'KNOWLEDGE_PASS' || intent === 'GENERAL_PASS') {
+    console.log("[MindShield] Factual / Reference query. Submitting without delay.");
+    releaseAndSubmit(text);
+    return;
+  }
+
+  // 3. Ambiguous questions evaluated by local AI in offscreen RAM
+  console.log("[MindShield] Ambiguous query. Scrutinizing with local AI:", text);
+
+  const fakeBtn = document.getElementById('mindshield-fake-btn');
+  const wrapper = document.getElementById('mindshield-wrapper');
+  const innerBox = document.getElementById('mindshield-inner-box');
+
+  if (wrapper) {
+    fakeInput.disabled = true;
+    if (fakeBtn) fakeBtn.disabled = true;
+    fakeInput.placeholder = "🧠 Checking if you're outsourcing critical thinking... Please wait.";
+    wrapper.style.borderColor = '#10a37f';
+    wrapper.style.boxShadow = '0 0 14px rgba(16, 163, 127, 0.35)';
+    if (innerBox) {
+      innerBox.style.borderColor = 'rgba(16, 163, 127, 0.4)';
+    }
+  }
+
   let hasResponded = false;
 
   const safetyTimeout = setTimeout(() => {
     if (!hasResponded) {
       hasResponded = true;
-      console.warn("[MindShield] Background timeout reached. Submitting fail-safe.");
       releaseAndSubmit(text);
     }
   }, 4500);
@@ -318,21 +609,18 @@ function processPrompt(fakeInput) {
 
       if (response && response.success) {
         if (response.isLazy) {
-          console.log("[MindShield] Lazy query blocked.");
+          console.log("[MindShield] Cognitive outsourcing flagged. Lockout started.");
           const cooldownTime = Date.now() + (5 * 1000);
-          
           chrome.storage.local.set({ 
             mindshield_lock_until: cooldownTime,
-            mindshield_lock_text: text
+            mindshield_lock_text: text 
           }, () => {
             activateLockoutState(cooldownTime, text);
           });
         } else {
-          console.log("[MindShield] Prompt approved. Submitting.");
           releaseAndSubmit(text);
         }
       } else {
-        console.warn("[MindShield] Analysis failed or timed out. Bypassing.", response?.error);
         releaseAndSubmit(text);
       }
     });
@@ -340,111 +628,130 @@ function processPrompt(fakeInput) {
     if (!hasResponded) {
       hasResponded = true;
       clearTimeout(safetyTimeout);
-      console.warn("[MindShield] Exception caught. Submitting bypass:", err.message);
       releaseAndSubmit(text);
     }
   }
 }
 
-// Copies approved text to hidden state, submits, and cleans fake text area
+// Releases approved text to native state and triggers submission
 function releaseAndSubmit(text) {
   const realInput = getRealInput();
   if (!realInput) return;
 
-  isBypassing = true; // Prevent the focus listener from redirecting during programmatical submission
+  isBypassing = true;
   realInput.focus();
   setReactInputValue(realInput, text);
+  lastSyncedText = '';
 
-  // Restore the fake input and button states back to normal so the next prompt can be typed
   const fakeInput = document.getElementById('mindshield-fake-input');
   const fakeBtn = document.getElementById('mindshield-fake-btn');
   const wrapper = document.getElementById('mindshield-wrapper');
+  const innerBox = document.getElementById('mindshield-inner-box');
 
-  if (fakeInput && fakeBtn && wrapper) {
+  if (fakeInput && wrapper) {
     fakeInput.disabled = false;
-    fakeBtn.disabled = false;
+    if (fakeBtn) fakeBtn.disabled = false;
     fakeInput.value = '';
     fakeInput.placeholder = "Protecting your mind... Type your prompt here.";
-    wrapper.style.borderColor = '#444';
+    wrapper.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+    wrapper.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.25)';
+    if (innerBox) {
+      innerBox.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+    }
   }
 
   setTimeout(() => {
     const container = getOverlayContainer(realInput);
     const buttons = container ? Array.from(container.querySelectorAll('button')) : [];
     
-    // Filter out our custom button using Javascript checks so it can never be targeted
     const nativeButtons = buttons.filter(btn => {
       return btn.id !== 'mindshield-fake-btn' && !btn.closest('#mindshield-wrapper');
     });
     
     let realBtn = nativeButtons[nativeButtons.length - 1];
 
-    // String fallbacks if the DOM layout is empty or if we are using the isolated ChatGPT/Gemini containers
     if (!realBtn) {
-      realBtn = document.querySelector('button[aria-label="Grok something"]') || // FIX: Target X.com's stable accessibility label
+      realBtn = document.querySelector('button[aria-label="Send Message"]') ||
+                document.querySelector('button[aria-label*="Send"]') || 
+                document.querySelector('button[aria-label*="send"]') || 
+                document.querySelector('g-icon-button[icon="send"]') ||
+                document.querySelector('button[aria-label="Grok something"]') || 
                 document.querySelector('button[data-testid="send-button"]') || 
-                document.querySelector('button[aria-label*="Send"]') ||
+                document.querySelector('button[data-testid*="send"]') || 
                 document.querySelector('button[class*="send"]') ||
                 document.querySelector('button[data-testid*="submit"]') ||
-                document.querySelector('[data-testid="grokSendButton"]') || // grok.com send button
-                document.querySelector('[data-testid="grokSend"]') || // Twitter's Grok send button
-                document.querySelector('g-icon-button[icon="send"]'); // Gemini send button icon wrapper
+                document.querySelector('[data-testid="grokSendButton"]') || 
+                document.querySelector('[data-testid="grokSend"]');
     }
 
     const form = realInput.closest('form');
 
     if (realBtn && !realBtn.disabled) {
-      console.log("[MindShield] Clicking submit button:", realBtn);
       realBtn.click();
     } else if (form) {
-      console.log("[MindShield] Submit button disabled or missing. Requesting form submit.");
       form.requestSubmit();
     } else if (realBtn) {
-      // Secondary 50ms fallback retry if React is slow to toggle the disabled attribute
-      console.log("[MindShield] Button found but temporarily disabled. Retrying...");
-      setTimeout(() => {
-        realBtn.click();
-      }, 50);
+      setTimeout(() => realBtn.click(), 50);
     } else {
-      console.log("[MindShield] Dispatching keydown submission fallback.");
       const enterEvent = new KeyboardEvent('keydown', {
         key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true
       });
       realInput.dispatchEvent(enterEvent);
     }
     
-    isBypassing = false; // Reset bypass state after trigger completes
+    // Automatically restore focus back to the fake input after submission completes
+    setTimeout(() => {
+      isBypassing = false;
+      const currentFake = document.getElementById('mindshield-fake-input');
+      if (currentFake && !currentFake.disabled) {
+        focusFakeInput(currentFake);
+      }
+    }, 120);
   }, 100);
 }
 
-// Locks fake elements and starts visual countdown
+// Locks fake elements and displays active countdown
 function activateLockoutState(lockUntil, autoSubmitText = '') {
   const fakeInput = document.getElementById('mindshield-fake-input');
   const fakeBtn = document.getElementById('mindshield-fake-btn');
   const wrapper = document.getElementById('mindshield-wrapper');
+  const innerBox = document.getElementById('mindshield-inner-box');
+  const realInput = getRealInput();
 
-  if (!fakeInput || !fakeBtn || !wrapper) return;
+  if (!fakeInput || !wrapper) return;
+
+  if (realInput) {
+    setReactInputValue(realInput, '');
+    lastSyncedText = '';
+  }
 
   fakeInput.disabled = true;
-  fakeBtn.disabled = true;
+  if (fakeBtn) fakeBtn.disabled = true;
+  fakeInput.blur();
   wrapper.style.borderColor = '#ff4d4d';
+  wrapper.style.boxShadow = '0 0 14px rgba(255, 77, 77, 0.35)';
+  if (innerBox) {
+    innerBox.style.borderColor = 'rgba(255, 77, 77, 0.5)';
+  }
 
-  // Locks fake elements and starts visual countdown
   function updateTimer() {
     const remaining = Math.max(0, Math.round((lockUntil - Date.now()) / 1000));
     if (remaining <= 0) {
       clearInterval(activeLockInterval);
       
       fakeInput.disabled = false;
-      fakeBtn.disabled = false;
+      if (fakeBtn) fakeBtn.disabled = false;
       fakeInput.placeholder = "Protecting your mind... Type your prompt here.";
-      wrapper.style.borderColor = '#444';
-      fakeInput.focus();
+      wrapper.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+      wrapper.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.25)';
+      if (innerBox) {
+        innerBox.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+      }
+      focusFakeInput(fakeInput);
       
       chrome.storage.local.remove(['mindshield_lock_until', 'mindshield_lock_text']);
 
       if (autoSubmitText) {
-        console.log("[MindShield] Lockout expired. Releasing and submitting prompt:", autoSubmitText);
         releaseAndSubmit(autoSubmitText);
       }
       return;
@@ -459,56 +766,75 @@ function activateLockoutState(lockUntil, autoSubmitText = '') {
   activeLockInterval = setInterval(updateTimer, 1000);
 }
 
-// Updates overlay inputs visually during background installation phase
+// Download status visuals
 function updateOverlayDownloadState(status, progress, file) {
   const fakeInput = document.getElementById('mindshield-fake-input');
   const fakeBtn = document.getElementById('mindshield-fake-btn');
   const wrapper = document.getElementById('mindshield-wrapper');
+  const innerBox = document.getElementById('mindshield-inner-box');
 
-  if (!fakeInput || !fakeBtn || !wrapper) return;
+  if (!fakeInput || !wrapper) return;
 
   if (status === 'downloading') {
     fakeInput.disabled = true;
-    fakeBtn.disabled = true;
+    if (fakeBtn) fakeBtn.disabled = true;
     fakeInput.value = '';
     fakeInput.placeholder = `🧠 Initializing local AI... [${progress}% completed] (File: ${file || 'weights'}). Please wait.`;
     wrapper.style.borderColor = '#e0a800';
+    wrapper.style.boxShadow = '0 0 14px rgba(224, 168, 0, 0.35)';
+    if (innerBox) innerBox.style.borderColor = 'rgba(224, 168, 0, 0.4)';
   } else if (status === 'failed') {
     fakeInput.disabled = true;
-    fakeBtn.disabled = true;
+    if (fakeBtn) fakeBtn.disabled = true;
     fakeInput.value = '';
     fakeInput.placeholder = `❌ Local AI Setup Failed: ${file || 'Initialization error'}. Try reloading the extension.`;
     wrapper.style.borderColor = '#ff4d4d';
+    wrapper.style.boxShadow = '0 0 14px rgba(255, 77, 77, 0.35)';
+    if (innerBox) innerBox.style.borderColor = 'rgba(255, 77, 77, 0.5)';
   } else if (status === 'ready') {
     chrome.storage.local.get(['mindshield_lock_until'], (result) => {
       if (result.mindshield_lock_until && result.mindshield_lock_until > Date.now()) {
         return;
       }
       fakeInput.disabled = false;
-      fakeBtn.disabled = false;
+      if (fakeBtn) fakeBtn.disabled = false;
       fakeInput.placeholder = "Protecting your mind... Type your prompt here.";
-      wrapper.style.borderColor = '#444';
+      wrapper.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+      wrapper.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.25)';
+      if (innerBox) innerBox.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+      focusFakeInput(fakeInput);
     });
   }
 }
 
-// Wrap overlay injection checks inside requestIdleCallback and run once every 2 seconds.
-// This ensures checks only execute when Chrome's main thread is resting, completely resolving forced reflows.
+// Immediate Mutation Engine: Instantly detects when React/Claude renders the prompt box
 function initOverlayEngine() {
-  if (window.requestIdleCallback) {
-    requestIdleCallback(() => injectOverlay());
-    setInterval(() => {
-      requestIdleCallback(() => injectOverlay());
-    }, 2000);
-  } else {
-    injectOverlay();
-    setInterval(injectOverlay, 2000);
-  }
+  injectOverlay();
+
+  const observer = new MutationObserver(() => {
+    const existing = document.getElementById('mindshield-wrapper');
+    if (!existing || !existing.isConnected) {
+      if (!mutationThrottleTimer) {
+        mutationThrottleTimer = setTimeout(() => {
+          injectOverlay();
+          mutationThrottleTimer = null;
+        }, 20);
+      }
+    }
+  });
+
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+
+  setInterval(injectOverlay, 1500);
 }
 
-// Check for active lockouts or download states upon load
+// Initialization hooks
+initOverlayEngine();
+
 chrome.storage.local.get(['mindshield_lock_until'], (result) => {
-  initOverlayEngine();
   if (result.mindshield_lock_until && result.mindshield_lock_until > Date.now()) {
     setTimeout(() => {
       chrome.storage.local.get(['mindshield_lock_text'], (storageResult) => {
@@ -518,7 +844,7 @@ chrome.storage.local.get(['mindshield_lock_until'], (result) => {
   }
 });
 
-// Reactively listen to live model download progress updates
+// Reactively update overlay during model download progress
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local') {
     if (changes.mindshield_download_status || changes.mindshield_download_progress || changes.mindshield_download_error) {
@@ -532,5 +858,3 @@ chrome.storage.onChanged.addListener((changes, area) => {
     }
   }
 });
-
-console.log("[MindShield] Overlay content script running.");

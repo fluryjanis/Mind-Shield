@@ -56,7 +56,7 @@ async function getClassifier() {
         }
       );
       await classifierPromise;
-      relayLog("Model successfully loaded and ready in memory.");
+      relayLog("Model successfully loaded and cached in RAM.");
       setStorageDownloadStatus('ready');
     } catch (err) {
       relayLog("Failed to load model: " + err.message);
@@ -80,26 +80,36 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   getClassifier()
     .then(async (classifier) => {
-      relayLog("Running zero-shot classification on prompt...");
+      relayLog("Running zero-shot cognitive scrutiny on prompt...");
       
-      // FIX: Robust three-category classification cleanly separates simple queries from factual lookup and logic tasks
+      // High-contrast, concise labels matching MNLI pre-training
+      const candidateLabels = [
+        "advice, opinions, decision making, or problem solving",
+        "factual information, reference, or a definition",
+        "coding, text formatting, or file conversion"
+      ];
+
       const results = await classifier(
         message.prompt, 
-        [
-          "simple query",
-          "factual reference",
-          "complex analysis"
-        ], 
+        candidateLabels, 
         {
-          hypothesis_template: "This text is a {}"
+          hypothesis_template: "This query is seeking {}."
         }
       );
 
       relayLog("Raw classification results: " + JSON.stringify(results));
       
-      // Strict check: if the top-ranked category is "simple query", initiate the lockout
-      const isLazy = results.labels[0] === "simple query";
-      relayLog("Classification decision (isLazy): " + isLazy);
+      const adviceIndex = results.labels.indexOf(candidateLabels[0]);
+      const factualIndex = results.labels.indexOf(candidateLabels[1]);
+
+      const adviceScore = results.scores[adviceIndex];
+      const factualScore = results.scores[factualIndex];
+      const topLabel = results.labels[0];
+
+      // Flag as lazy if advice/decision is the top label OR if advice score strongly outweighs factual retrieval
+      const isLazy = (topLabel === candidateLabels[0]) || (adviceScore > 0.38 && adviceScore > factualScore);
+
+      relayLog(`Classification decision (isLazy: ${isLazy}) [Advice: ${(adviceScore * 100).toFixed(1)}% | Factual: ${(factualScore * 100).toFixed(1)}%]`);
       
       sendResponse({ success: true, isLazy });
     })

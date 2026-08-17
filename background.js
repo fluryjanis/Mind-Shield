@@ -43,18 +43,25 @@ chrome.runtime.onInstalled.addListener((details) => {
 });
 
 async function createOffscreen() {
+  // Check if offscreen document is already running in Chrome
+  if (chrome.offscreen && typeof chrome.offscreen.hasDocument === 'function') {
+    const hasDoc = await chrome.offscreen.hasDocument();
+    if (hasDoc) {
+      offscreenCreated = true;
+      if (resolveOffscreenReady) resolveOffscreenReady();
+      return offscreenReadyPromise;
+    }
+  }
+
   if (offscreenCreated) {
     return offscreenReadyPromise;
   }
 
-  relayLog("[Background] Attempting to create offscreen context...");
+  relayLog("[Background] Attempting to create persistent offscreen context...");
   try {
-    // Force-close any orphan/zombie offscreen document if it exists to prevent duplication errors
-    await chrome.offscreen.closeDocument().catch(() => {});
-
     await chrome.offscreen.createDocument({
       url: chrome.runtime.getURL('offscreen.html'),
-      reasons: ['DOM_PARSER'],
+      reasons: ['WORKERS'],
       justification: 'Run WebAssembly and local ONNX/Transformers model execution'
     });
     offscreenCreated = true;
@@ -113,17 +120,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           prompt: request.prompt
         }, (response) => {
           const lastErr = chrome.runtime.lastError;
-          
-          // Force-close the offscreen document immediately after evaluation completes to release memory/threads
-          chrome.offscreen.closeDocument().catch(() => {});
-          offscreenCreated = false;
-          initOffscreenReadyPromise();
 
           if (lastErr) {
             relayLog("[Background Error] Message to offscreen failed: " + lastErr.message);
             sendResponse({ success: false, error: lastErr.message });
           } else {
             relayLog("[Background] Received classification response.");
+            // Kept alive: We do NOT close the document here, keeping the model cached in RAM.
             sendResponse(response);
           }
         });
