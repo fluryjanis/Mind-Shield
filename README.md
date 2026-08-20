@@ -16,7 +16,7 @@ It doesn't try to stop you from using AI. It helps you decide **when you actuall
 
 Chrome and Chromium-based browsers currently require a manual installation.
 
-1. Download the ZIP from the **v1.1.0 release**.
+1. Download the ZIP from the **v1.1.5 release**.
 2. Extract the ZIP to a folder.
 3. Open `chrome://extensions/`.
 4. Enable **Developer mode**.
