@@ -12,11 +12,11 @@ It doesn't try to stop you from using AI. It helps you decide **when you actuall
 
 ### 🌐 Chrome / Chromium
 
-**[⬇️ Download MindShield v1.0.2 for Chrome](https://github.com/fluryjanis/Mind-Shield/releases/tag/v1.0.2)**
+**[⬇️ Download MindShield v1.1.0 for Chrome](https://github.com/fluryjanis/Mind-Shield/releases/tag/v1.1.0#assets)**
 
 Chrome and Chromium-based browsers currently require a manual installation.
 
-1. Download the ZIP from the **v1.0.2 release**.
+1. Download the ZIP from the **v1.1.0 release**.
 2. Extract the ZIP to a folder.
 3. Open `chrome://extensions/`.
 4. Enable **Developer mode**.
