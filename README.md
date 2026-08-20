@@ -154,19 +154,39 @@ It is simply a tool for introducing a moment of reflection when a prompt appears
 
 ## 📜 Changelog
 
-### v1.0.2
+### v1.1.5
 
 Latest release.
 
 See the [Chrome release](https://github.com/fluryjanis/Mind-Shield/releases/tag/v1.1.5) and [Firefox release](https://github.com/fluryjanis/Mind-Shield-Firefox/releases/tag/v1.1.5) for the available downloads.
 
-### v1.0.0
+### v1.1.0
 
-- Added support for ChatGPT, Claude, Gemini, and Grok.
-- Added local `DistilBERT-MNLI` prompt classification.
-- Added reflection timer for simple shortcut prompts.
-- Added background evaluation using `requestIdleCallback`.
-- Added local WebAssembly inference.
+### 🖥️ Improved Prompt Bar - removed in v1.1.5
+
+The prompt bar now includes a gray inner area, improving its visual appearance and making the input area clearer.
+
+### ⚡ Improved User Experience - improved in v1.1.5
+
+Auto-focus has been added to make interacting with MindShield faster and more convenient.
+
+### 🎯 More Accurate Prompt Detection
+
+MindShield now focuses its detection specifically on questions.
+
+This significantly reduces false positives caused by casual discussion, statements, and normal information sharing.
+
+### 🧠 Improved AI Classification
+
+The AI classifier has been tweaked to better distinguish between different types of questions.
+
+Knowledge-based questions are now more likely to pass through normally, while questions involving things you could reasonably think through yourself are more likely to trigger MindShield's reflection mechanism.
+
+The goal is to make MindShield feel less intrusive while still encouraging independent thinking.
+
+### 🧹 Project Cleanup
+
+This reduces the extension's file size and makes the project easier to inspect and understand.
 
 ---
 
