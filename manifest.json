@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MindShield",
-  "version": "1.1.5",
+  "version": "1.2.0",
 
   "description": "Protects your critical thinking from being outsourced to AI.",
   "permissions": [

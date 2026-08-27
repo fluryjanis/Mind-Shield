@@ -8,21 +8,15 @@ const REAL_INPUT_SELECTORS = [
   'textarea[placeholder*="message"]'          // Standard fallback
 ];
 
-// Expanded to catch both native <button> and X.com's React Native <div role="button">
 const SEND_BUTTON_SELECTORS = [
-  // Standard AI Platform Buttons
   'button[data-testid="send-button"]',
   'button[aria-label*="Send"]',
   'button[aria-label*="send"]',
   'button[data-testid*="send"]',
   'button[data-testid*="submit"]',
   'g-icon-button[icon="send"]',
-  
-  // Standalone Grok.com
   'button[data-testid="grokSendButton"]',
   'button[data-testid="grokSend"]',
-
-  // X.com (Twitter) Grok & UI Selectors
   '[data-testid="grok-send-button"]',
   '[data-testid="grokSendButton"]',
   '[data-testid="grokSend"]',
@@ -41,16 +35,17 @@ const SEND_BUTTON_SELECTORS = [
 ];
 
 let activeLockInterval = null;
-let isBypassing = false; // Flag to allow programmatical release without recursive interception
+let warningDismissTimer = null;
+let currentPath = window.location.pathname;
+let isBypassing = false;
 
-// Listen for diagnostic log relays forwarded from background/offscreen
+// Listen for diagnostic log relays forwarded from background
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'relayLog' && window === window.top) {
     console.log(request.message);
   }
 });
 
-// Helper to locate the active native chat input element
 function getRealInput() {
   for (const selector of REAL_INPUT_SELECTORS) {
     const elements = document.querySelectorAll(selector);
@@ -69,7 +64,6 @@ function getRealInput() {
   return null;
 }
 
-// Reads the text currently written inside the native prompt field
 function getPromptText() {
   const realInput = getRealInput();
   if (!realInput) return '';
@@ -82,65 +76,139 @@ function getPromptText() {
   return '';
 }
 
-// Checks if a given click/pointer target is or is inside a recognized Send button
 function findSendButton(target) {
   if (!target || typeof target.closest !== 'function') return null;
   for (const selector of SEND_BUTTON_SELECTORS) {
     const btn = target.closest(selector);
-    if (btn) {
-      return btn;
-    }
+    if (btn) return btn;
   }
   return null;
 }
 
-// Triage prompt intent: 'INSTANT_LOCKOUT', 'KNOWLEDGE_PASS', 'THINKING_SCRUTINIZE', or 'GENERAL_PASS'
+// ---------------------------------------------------------------------------
+// Intent Triage Engine with Multi-Sentence & Unanchored Scanning
+// ---------------------------------------------------------------------------
+
 function evaluatePromptIntent(text) {
   const cleaned = text.trim();
-  if (!cleaned) return 'GENERAL_PASS';
+  if (!cleaned) return 'PASS';
 
-  // 1. Instant Factual Knowledge / Reference (Always Bypass AI Lockout)
+  // 1. Length Guard: 400+ characters automatically pass (code blocks, context dumps)
+  if (cleaned.length > 400) {
+    console.log("[MindShield] Large prompt (>400 chars). Bypassing AI evaluation.");
+    return 'PASS';
+  }
+
+  // 2. Mental Math / Calculations (WARNING — Soft Reminder)
+  const isRawArithmetic = /^[\d\s+\-*/()=%$.,]+$/.test(cleaned) && /[+\-*/%=]/.test(cleaned) && !/[a-zA-Z]/.test(cleaned);
+  const mathWordPatterns = /\b(calculate|what is \d+[\s\S]*%|convert \d+[\s\S]*(to|in|fahrenheit|celsius|km|miles|usd|eur))\b/i;
+  if (isRawArithmetic || mathWordPatterns.test(cleaned)) {
+    return 'WARNING_MATH';
+  }
+
+  // 3. Direct Problem / Riddle / Homework Surrender (FLAGGED — Tier 3: 5s Lockout)
+  const directSolvePatterns = [
+    /\b(solve this (riddle|puzzle|problem|equation|homework|assignment))\b/i,
+    /\b(find the solution to this (riddle|puzzle|problem))\b/i,
+    /\b(give me the answer to this (problem|riddle|puzzle|exam))\b/i,
+    /\b(do my homework for me|solve for x:)\b/i
+  ];
+  for (const pattern of directSolvePatterns) {
+    if (pattern.test(cleaned)) return 'FLAGGED';
+  }
+
+  // 4. Collaborative Review & Feedback (PASS — Tier 1)
+  const collaborativeReviewPatterns = [
+    /\b(can you review|please review|review (this|my)|give me feedback on|critique my|second opinion on)\b/i,
+    /\b(is my (argument|code|logic|reasoning|math) (sound|valid|correct)|does this make sense)\b/i,
+    /\b(did i (do|write|calculate) this (right|correctly)|check my work|proofread my|double check my)\b/i
+  ];
+  for (const pattern of collaborativeReviewPatterns) {
+    if (pattern.test(cleaned)) return 'PASS';
+  }
+
+  // 5. Analytical Explanations & Comparisons (PASS — Tier 1)
+  const analyticalPatterns = [
+    /\b(why (does|do|is|did|are|would)\b|explain (how|why|the mechanism|the concept of))\b/i,
+    /\b(what are the (advantages|disadvantages|pros and cons|benefits|tradeoffs) of)\b/i,
+    /\b(what is the difference between|compare and contrast|how does\s+[a-zA-Z0-9_-]+\s+differ from)\b/i
+  ];
+  for (const pattern of analyticalPatterns) {
+    if (pattern.test(cleaned)) return 'PASS';
+  }
+
+  // 6. Factual Knowledge & Definitions (PASS — Tier 1)
   const factualKnowledgePatterns = [
-    /^(what is the capital of|where is|when was|when did|who is|who was|who invented|who wrote)\b/i,
-    /^(what is the definition of|what does\s+[a-zA-Z0-9_-]+\s+mean|define\b)/i,
-    /^(what is the syntax for|how to declare|how to install|how to import|how to run|how to write a loop in)\b/i,
-    /^(atomic number of|boiling point of|distance between|population of|formula for)\b/i,
-    /^(translate\b|what is the spanish|what is the french|what is the german|what is the word for)\b/i
+    /\b(what is the capital of|where is|when was|when did|who is|who was|who invented|who wrote)\b/i,
+    /\b(what is the definition of|what does\s+[a-zA-Z0-9_-]+\s+mean|define\b)/i,
+    /\b(what is the syntax for|how to declare|how to install|how to import|how to run|how to write a loop in)\b/i,
+    /\b(atomic number of|boiling point of|distance between|population of|formula for)\b/i,
+    /\b(translate\b|what is the spanish|what is the french|what is the german|what is the word for)\b/i
   ];
-
   for (const pattern of factualKnowledgePatterns) {
-    if (pattern.test(cleaned)) {
-      return 'KNOWLEDGE_PASS';
-    }
+    if (pattern.test(cleaned)) return 'PASS';
   }
 
-  // 2. Direct Cognitive Outsourcing (INSTANT LOCKOUT)
-  const instantLockoutPatterns = [
-    /^(should i|what should i do|what would you do|if you were me|how would you handle|help me decide|which one is better for me|is it better to)\b/i,
-    /^(solve this|solve the following|solve this riddle|solve this puzzle|solve the math)\b/i,
-    /^(is\s+[a-zA-Z0-9_ -]+\s+better\s+(than|the)\s+[a-zA-Z0-9_ -]+)\b/i,
-    /^(what is your opinion on|what should my opinion be|who is right|who is wrong|in my situation)\b/i,
-    /^(give me arguments for|write a conclusion for|analyze my situation|make a choice for me)\b/i,
-    /^(why should i|how can i convince|what decision should i make|what do you think i should do)\b/i
+  // 7. Social & Communication Offloading (WARNING — Tier 2)
+  const socialOffloadPatterns = [
+    /\b(what should i (respond|reply|say|text)|how should i (respond|reply|text|answer))\b/i,
+    /\b(what is a good (comeback|reply|response)|how do i tell (him|her|them|my boss|my coworker))\b/i,
+    /\b((draft|write) (a|my) (reply|response|text|message|email) (to|for))\b/i
   ];
-
-  for (const pattern of instantLockoutPatterns) {
-    if (pattern.test(cleaned)) {
-      return 'INSTANT_LOCKOUT';
-    }
+  for (const pattern of socialOffloadPatterns) {
+    if (pattern.test(cleaned)) return 'WARNING_COMMUNICATION';
   }
 
-  // 3. Ambiguous Questions (Send to local AI model for zero-shot scrutiny)
-  const generalQuestionPattern = /^(what|why|how|when|where|who|whom|whose|which|can|could|would|should|will|shall|may|might|must|is|are|am|was|were|isn't|aren't|wasn't|weren't|do|does|did|don't|doesn't|didn't|has|have|had|haven't|hasn't|hadn't)\b/i;
+  // 8. Action Prescriptions & Diagnostic Surrender (WARNING — Tier 2)
+  const actionPrescriptionPatterns = [
+    /\b(tell me (exactly )?what to do|tell me my next steps|what are my next steps)\b/i,
+    /\b(figure (this|it|out) (for me|what happened)|just tell me what i need to do)\b/i,
+    /\b(what should my (course of action|next step|plan) be)\b/i
+  ];
+  for (const pattern of actionPrescriptionPatterns) {
+    if (pattern.test(cleaned)) return 'WARNING_PRESCRIPTION';
+  }
+
+  // 9. Subjective Decisions & Personal Advice (WARNING — Tier 2)
+  const subjectiveDecisionPatterns = [
+    /\b(should i (choose|pick|buy|take|quit|stay|invest|switch)|which (one )?should i (choose|pick|buy|take))\b/i,
+    /\b(what would you do (in my situation|if you were me)|if you were in my shoes)\b/i,
+    /\b(help me decide|who is (in the )?right|who is wrong|what should my opinion be)\b/i
+  ];
+  for (const pattern of subjectiveDecisionPatterns) {
+    if (pattern.test(cleaned)) return 'WARNING_DECISION';
+  }
+
+  // 10. Task Automation (WARNING — Tier 2)
+  const taskAutomationPatterns = [
+    /\b(convert this (list|table|csv|text) (in)?to (json|yaml|markdown|csv|table|an array))\b/i,
+    /\b(extract all (emails|phone numbers|urls|links|dates) from)\b/i,
+    /\b(format this (data|text|code|table) as|reformat this list)\b/i
+  ];
+  for (const pattern of taskAutomationPatterns) {
+    if (pattern.test(cleaned)) return 'WARNING_AUTOMATION';
+  }
+
+  // 11. Conversational & Casual Statements (PASS — Tier 1)
+  const conversationPatterns = [
+    /\b(i (built|created|made|saw|think|feel|wrote)|just wanted to share|today i)\b/i,
+    /\b(hello|hi|hey|good morning|good evening|knock knock|idk|thanks|thank you|ok|cool)\b/i
+  ];
+  for (const pattern of conversationPatterns) {
+    if (pattern.test(cleaned)) return 'PASS';
+  }
+
+  // 12. Ambiguous Questions -> Delegate to Zero-Shot Local AI
+  const generalQuestionPattern = /\b(what|why|how|when|where|who|whom|whose|which|can|could|would|should|will|shall|may|might|must|is|are|am|was|were|isn't|aren't|wasn't|weren't|do|does|did|don't|doesn't|didn't|has|have|had|haven't|hasn't|hadn't)\b/i;
   if (cleaned.includes('?') || generalQuestionPattern.test(cleaned)) {
-    return 'THINKING_SCRUTINIZE';
+    return 'SCRUTINIZE';
   }
 
-  return 'GENERAL_PASS';
+  return 'PASS';
 }
 
 // ---------------------------------------------------------------------------
-// Toast Notification Engine
+// Toast Notification Engine (Zero-innerHTML / Safe DOM Construction)
 // ---------------------------------------------------------------------------
 
 function getOrCreateToast() {
@@ -175,20 +243,57 @@ function getOrCreateToast() {
   return toast;
 }
 
-function showToast(type, message) {
+function showToast(type, titleText, detailText = '', timerText = '') {
   const toast = getOrCreateToast();
-  toast.innerHTML = message;
+  toast.textContent = '';
+
+  const iconSpan = document.createElement('span');
+  iconSpan.style.fontSize = '16px';
+
+  const textWrap = document.createElement('div');
+  textWrap.style.display = 'flex';
+  textWrap.style.alignItems = 'center';
+  textWrap.style.gap = '6px';
+
+  const titleEl = document.createElement('strong');
+  titleEl.textContent = titleText;
+  textWrap.appendChild(titleEl);
+
+  if (detailText) {
+    const detailEl = document.createElement('span');
+    detailEl.textContent = detailText;
+    textWrap.appendChild(detailEl);
+  }
+
+  if (timerText) {
+    const timerSpan = document.createElement('span');
+    timerSpan.style.color = '#f87171';
+    timerSpan.style.fontWeight = '700';
+    timerSpan.style.marginLeft = '4px';
+    timerSpan.textContent = timerText;
+    textWrap.appendChild(timerSpan);
+  }
 
   if (type === 'evaluating') {
+    iconSpan.textContent = '🧠';
     toast.style.borderColor = '#10a37f';
     toast.style.boxShadow = '0 12px 36px rgba(0, 0, 0, 0.5), 0 0 16px rgba(16, 163, 127, 0.35)';
+  } else if (type === 'warning') {
+    iconSpan.textContent = '⚠️';
+    toast.style.borderColor = '#f59e0b';
+    toast.style.boxShadow = '0 12px 36px rgba(0, 0, 0, 0.5), 0 0 16px rgba(245, 158, 11, 0.35)';
   } else if (type === 'locked') {
+    iconSpan.textContent = '🧠';
     toast.style.borderColor = '#ef4444';
     toast.style.boxShadow = '0 12px 36px rgba(0, 0, 0, 0.5), 0 0 16px rgba(239, 68, 68, 0.4)';
   } else if (type === 'success') {
+    iconSpan.textContent = '✅';
     toast.style.borderColor = '#22c55e';
     toast.style.boxShadow = '0 12px 36px rgba(0, 0, 0, 0.5), 0 0 16px rgba(34, 197, 94, 0.35)';
   }
+
+  toast.appendChild(iconSpan);
+  toast.appendChild(textWrap);
 
   toast.style.opacity = '1';
   toast.style.transform = 'translateX(-50%) translateY(0)';
@@ -203,37 +308,56 @@ function hideToast() {
 }
 
 // ---------------------------------------------------------------------------
-// Lockout / Cooldown Engine
+// Lockout & Warning Triggers (Tab-Scoped)
 // ---------------------------------------------------------------------------
 
-function triggerLockout(durationMs = 5000, reason = 'Critical thinking outsourcing detected.') {
+function triggerWarningToast(message, detail = 'Consider your own perspective first.') {
+  showToast('warning', message, detail);
+  if (warningDismissTimer) clearTimeout(warningDismissTimer);
+  warningDismissTimer = setTimeout(() => {
+    hideToast();
+  }, 4000);
+}
+
+function triggerLockout(durationMs = 5000, reason = 'Problem-solving outsourcing detected.') {
   const lockUntil = Date.now() + durationMs;
-  chrome.storage.local.set({ mindshield_lock_until: lockUntil });
 
   function updateTimer() {
     const remaining = Math.max(0, Math.ceil((lockUntil - Date.now()) / 1000));
     if (remaining <= 0) {
       clearInterval(activeLockInterval);
       activeLockInterval = null;
-      chrome.storage.local.remove(['mindshield_lock_until']);
 
-      showToast('success', `<span>✅</span> <strong>Unlocked.</strong> Submitting your prompt...`);
+      showToast('success', 'Unlocked.', 'Submitting prompt...');
       setTimeout(() => {
         hideToast();
         passThroughSubmit();
-      }, 800);
+      }, 700);
       return;
     }
 
-    showToast(
-      'locked',
-      `<span>🧠</span> <div><strong>MindShield Lock:</strong> ${reason} <span style="color:#f87171; margin-left:6px; font-weight:700;">${remaining}s remaining</span></div>`
-    );
+    showToast('locked', 'MindShield Lock:', reason, `${remaining}s remaining`);
   }
 
   if (activeLockInterval) clearInterval(activeLockInterval);
   updateTimer();
   activeLockInterval = setInterval(updateTimer, 1000);
+}
+
+function teardownStateOnNavigation() {
+  if (window.location.pathname !== currentPath) {
+    currentPath = window.location.pathname;
+    if (activeLockInterval) {
+      clearInterval(activeLockInterval);
+      activeLockInterval = null;
+    }
+    if (warningDismissTimer) {
+      clearTimeout(warningDismissTimer);
+      warningDismissTimer = null;
+    }
+    hideToast();
+    isBypassing = false;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -246,7 +370,6 @@ function passThroughSubmit() {
 
   isBypassing = true;
 
-  // 1. Locate platform-specific native submit button (button or div[role="button"])
   let sendBtn = null;
   for (const selector of SEND_BUTTON_SELECTORS) {
     const btn = document.querySelector(selector);
@@ -259,7 +382,6 @@ function passThroughSubmit() {
   const form = realInput.closest('form');
 
   if (sendBtn) {
-    // Dispatch full pointer and mouse event chain to trigger React Native for Web (X.com)
     sendBtn.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
     sendBtn.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
     sendBtn.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, cancelable: true }));
@@ -284,17 +406,13 @@ function passThroughSubmit() {
   }, 250);
 }
 
-// Main evaluation interceptor triggered on Enter key or Send button click
 function interceptSubmission(e) {
   if (isBypassing) return;
 
-  // Check if currently under an active lockout
   if (activeLockInterval) {
     e.preventDefault();
     e.stopPropagation();
     e.stopImmediatePropagation();
-    
-    // Pulse the toast to remind user
     const toast = getOrCreateToast();
     toast.style.transform = 'translateX(-50%) scale(1.05)';
     setTimeout(() => { toast.style.transform = 'translateX(-50%) scale(1)'; }, 150);
@@ -302,50 +420,56 @@ function interceptSubmission(e) {
   }
 
   const text = getPromptText();
-  if (text.length === 0) return;
-
-  // Tiny queries pass without friction
-  if (text.length < 3) {
-    return;
-  }
-
-  // Elementary math guard: block basic arithmetic calculations immediately
-  const simpleMathRegex = /^[\d\s+\-*/()=]+$/;
-  const hasLetters = /[a-zA-Z]/.test(text);
-  if (simpleMathRegex.test(text) && !hasLetters && text.length < 15) {
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
-    console.log("[MindShield] Simple math detected via regex. Initiating lockout.");
-    triggerLockout(5000, 'Simple arithmetic detected.');
-    return;
-  }
+  if (text.length === 0 || text.length < 3) return;
 
   const intent = evaluatePromptIntent(text);
 
-  // 1. Instant Lockout for obvious reasoning/decision outsourcing
-  if (intent === 'INSTANT_LOCKOUT') {
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation();
-    console.log("[MindShield] Direct cognitive outsourcing detected. Initiating lockout.");
-    triggerLockout(5000, 'Decision or reasoning outsourcing detected.');
+  // Tier 1: Immediate Pass (0ms delay)
+  if (intent === 'PASS') {
     return;
   }
 
-  // 2. Factual knowledge or statements pass through immediately with 0ms delay
-  if (intent === 'KNOWLEDGE_PASS' || intent === 'GENERAL_PASS') {
-    console.log("[MindShield] Factual / Reference query. Allowing native submission.");
-    return; // Let the browser/platform submit naturally
+  // Tier 2: Warnings (Submits immediately while showing informative toast)
+  if (intent === 'WARNING_MATH') {
+    triggerWarningToast('Mental Math Reminder:', 'Consider calculating mentally before asking AI.');
+    return;
   }
 
-  // 3. Ambiguous questions evaluated by local AI model
+  if (intent === 'WARNING_COMMUNICATION') {
+    triggerWarningToast('Communication Outsourcing:', 'Consider drafting your own reply first.');
+    return;
+  }
+
+  if (intent === 'WARNING_PRESCRIPTION') {
+    triggerWarningToast('Action Prescription:', 'Try diagnosing the root cause first.');
+    return;
+  }
+
+  if (intent === 'WARNING_DECISION') {
+    triggerWarningToast('Decision Outsourcing:', 'Consider your own judgment first.');
+    return;
+  }
+
+  if (intent === 'WARNING_AUTOMATION') {
+    triggerWarningToast('Task Automation:', 'Delegating formatting chore.');
+    return;
+  }
+
+  // Tier 3: Direct Problem Solving (5s Lockout)
+  if (intent === 'FLAGGED') {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    triggerLockout(5000, 'Direct problem-solving outsourcing detected.');
+    return;
+  }
+
+  // Tier 3 Ambiguous: Scrutinized by Local AI
   e.preventDefault();
   e.stopPropagation();
   e.stopImmediatePropagation();
 
-  console.log("[MindShield] Ambiguous query. Scrutinizing with local AI:", text);
-  showToast('evaluating', `<span>🧠</span> <span>Checking with local AI...</span>`);
+  showToast('evaluating', 'Thinking...', 'Checking prompt with local AI');
 
   let hasResponded = false;
   const safetyTimeout = setTimeout(() => {
@@ -363,9 +487,12 @@ function interceptSubmission(e) {
       clearTimeout(safetyTimeout);
 
       if (response && response.success) {
-        if (response.isLazy) {
-          console.log("[MindShield] Cognitive outsourcing flagged by AI. Lockout started.");
-          triggerLockout(5000, 'Critical thinking outsourcing detected.');
+        if (response.tier === 'FLAGGED') {
+          triggerLockout(5000, 'Problem-solving outsourcing detected.');
+        } else if (response.tier === 'WARNING') {
+          hideToast();
+          triggerWarningToast('Notice:', 'AI used for subjective guidance.');
+          passThroughSubmit();
         } else {
           hideToast();
           passThroughSubmit();
@@ -386,10 +513,9 @@ function interceptSubmission(e) {
 }
 
 // ---------------------------------------------------------------------------
-// Document-Level Event Listeners (Capturing Phase)
+// Document-Level Event Listeners
 // ---------------------------------------------------------------------------
 
-// 1. Intercept Enter key submissions (without Shift)
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
     const realInput = getRealInput();
@@ -399,7 +525,6 @@ document.addEventListener('keydown', (e) => {
   }
 }, true);
 
-// 2. Intercept Pointerdown / Mousedown on Send buttons (Catches X.com before it consumes the event)
 const handleSendButtonTrigger = (e) => {
   const btn = findSendButton(e.target);
   if (btn) {
@@ -411,10 +536,5 @@ document.addEventListener('pointerdown', handleSendButtonTrigger, true);
 document.addEventListener('mousedown', handleSendButtonTrigger, true);
 document.addEventListener('click', handleSendButtonTrigger, true);
 
-// Check if a lockout was already in progress upon loading
-chrome.storage.local.get(['mindshield_lock_until'], (result) => {
-  if (result.mindshield_lock_until && result.mindshield_lock_until > Date.now()) {
-    const remainingMs = result.mindshield_lock_until - Date.now();
-    triggerLockout(remainingMs, 'Active lockout continuing.');
-  }
-});
+window.addEventListener('popstate', teardownStateOnNavigation);
+setInterval(teardownStateOnNavigation, 1000);

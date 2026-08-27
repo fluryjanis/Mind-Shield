@@ -1,7 +1,5 @@
-// Universal namespace import to support both ESM named exports and UMD browser bundles
 import * as TransformersModule from './transformers/transformers.js';
 
-// Fallback chain: attempts ESM namespace first, then global self, then global transformers namespace
 const pipeline = TransformersModule.pipeline || self.pipeline || self.transformers?.pipeline;
 const env = TransformersModule.env || self.env || self.transformers?.env;
 
@@ -12,66 +10,33 @@ function relayLog(message) {
   } catch (e) {}
 }
 
-// Helper to delegate storage updates to the service worker since storage is restricted in offscreen contexts
-function setStorageDownloadStatus(status, progress = 0, file = '') {
-  try {
-    chrome.runtime.sendMessage({
-      action: 'updateDownloadStatus',
-      status: status,
-      progress: progress,
-      file: file
-    });
-  } catch (e) {
-    console.warn("[Offscreen] Failed to send storage update message:", e.message);
-  }
-}
-
-relayLog("Loading offscreen thread...");
-relayLog("Verified WebAssembly path: " + env?.backends?.onnx?.wasm?.wasmPaths);
-
 let classifierPromise = null;
 
 async function getClassifier() {
   if (!pipeline) {
-    throw new Error("Transformers library failed to expose the 'pipeline' function. Ensure your local bundle is copied correctly.");
+    throw new Error("Transformers library failed to expose the 'pipeline' function.");
   }
 
   if (!classifierPromise) {
-    relayLog("Downloading and loading 28MB classification model...");
+    relayLog("Loading 28MB classification model into RAM...");
     try {
       classifierPromise = pipeline(
         'zero-shot-classification', 
         'Xenova/distilbert-base-uncased-mnli',
-        {
-          device: 'wasm',
-          progress_callback: (progress) => {
-            if (progress.status === 'progress') {
-              const percent = Math.round(progress.loaded / progress.total * 100);
-              const msg = `Model Download - ${progress.file}: ${percent}%`;
-              relayLog(msg);
-              
-              setStorageDownloadStatus('downloading', percent, progress.file);
-            }
-          }
-        }
+        { device: 'wasm' }
       );
       await classifierPromise;
-      relayLog("Model successfully loaded and cached in RAM.");
-      setStorageDownloadStatus('ready');
+      relayLog("Model ready in RAM.");
     } catch (err) {
       relayLog("Failed to load model: " + err.message);
       classifierPromise = null;
-      setStorageDownloadStatus('failed', 0, err.message);
       throw err;
     }
   }
   return classifierPromise;
 }
 
-// Pre-load the classifier instantly on startup
-getClassifier().catch(err => {
-  relayLog("Pre-load failed during startup initialization: " + err.message);
-});
+getClassifier().catch(() => {});
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.target !== 'offscreen') return;
@@ -80,54 +45,42 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   getClassifier()
     .then(async (classifier) => {
-      relayLog("Running zero-shot cognitive scrutiny on prompt...");
-      
-      // High-contrast, concise labels matching MNLI pre-training
+      // 3-Tier Multi-Intent Labels
       const candidateLabels = [
-        "advice, opinions, decision making, or problem solving",
-        "factual information, reference, or a definition",
-        "coding, text formatting, or file conversion"
+        "solving a logic puzzle, riddle, math problem, or test question",
+        "asking for personal advice, social reply drafting, subjective decision, or action steps",
+        "asking for a factual explanation, concept breakdown, critique, or learning inquiry"
       ];
 
       const results = await classifier(
         message.prompt, 
         candidateLabels, 
-        {
-          hypothesis_template: "This query is seeking {}."
-        }
+        { hypothesis_template: "The user is asking for {}." }
       );
 
       relayLog("Raw classification results: " + JSON.stringify(results));
       
-      const adviceIndex = results.labels.indexOf(candidateLabels[0]);
-      const factualIndex = results.labels.indexOf(candidateLabels[1]);
-
-      const adviceScore = results.scores[adviceIndex];
-      const factualScore = results.scores[factualIndex];
       const topLabel = results.labels[0];
+      const topScore = results.scores[0];
 
-      // Flag as lazy if advice/decision is the top label OR if advice score strongly outweighs factual retrieval
-      const isLazy = (topLabel === candidateLabels[0]) || (adviceScore > 0.38 && adviceScore > factualScore);
+      let tier = 'PASS';
+      if (topLabel === candidateLabels[0] && topScore > 0.40) {
+        tier = 'FLAGGED';
+      } else if (topLabel === candidateLabels[1] && topScore > 0.38) {
+        tier = 'WARNING';
+      }
 
-      relayLog(`Classification decision (isLazy: ${isLazy}) [Advice: ${(adviceScore * 100).toFixed(1)}% | Factual: ${(factualScore * 100).toFixed(1)}%]`);
-      
-      sendResponse({ success: true, isLazy });
+      relayLog(`Classification Tier: ${tier} [Top: "${topLabel}" (${(topScore * 100).toFixed(1)}%)]`);
+      sendResponse({ success: true, tier });
     })
     .catch(err => {
-      relayLog("Evaluation pipeline crash: " + err.message);
+      relayLog("Evaluation error: " + err.message);
       sendResponse({ success: false, error: err.message });
     });
 
-  return true; // Keep response port alive for async response
+  return true;
 });
 
-// Broadcast handshake
 try {
-  chrome.runtime.sendMessage({ action: 'offscreenReady' }, (response) => {
-    relayLog("Handshake registered with Service Worker.");
-  });
-} catch (e) {
-  console.warn("[MindShield Offscreen] Handshake broadcast failed. Service worker may not be active yet.");
-}
-
-relayLog("Listener initialized.");
+  chrome.runtime.sendMessage({ action: 'offscreenReady' });
+} catch (e) {}
