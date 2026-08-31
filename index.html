@@ -1,871 +1,796 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <meta
-    name="google-site-verification"
-    content="E7H7P8Ax633TA144bj1ShaNFLbdh_RKFe-wyt92ierw"
-  >
-
-  <title>MindShield — Use AI Without Losing Your Thinking</title>
-
-  <meta
-    name="description"
-    content="MindShield is a privacy-first browser extension that helps you avoid unnecessary AI dependence by adding a brief reflection pause before simple AI requests."
-  >
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MindShield — Live Prompt Sandbox</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
   <style>
-    :root {
-      --bg: #0f172a;
-      --card: #1e293b;
-      --card-hover: #263449;
-      --text: #f8fafc;
-      --accent: #38bdf8;
-      --muted: #94a3b8;
-      --border: #334155;
-      --warning: #fbbf24;
-    }
-
-    * {
+    /* --- Base Reset & Clean Centering --- */
+    *, *::before, *::after {
       box-sizing: border-box;
-    }
-
-    html {
-      scroll-behavior: smooth;
-    }
-
-    body {
       margin: 0;
-      font-family:
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        Roboto,
-        sans-serif;
-      background: var(--bg);
-      color: var(--text);
+      padding: 0;
+    }
+
+    html, body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #f8fafc;
+      color: #0f172a;
+      -webkit-font-smoothing: antialiased;
       line-height: 1.6;
     }
 
-    .container {
-      max-width: 820px;
-      width: calc(100% - 2rem);
-      margin: 0 auto;
+    body {
+      display: flex;
+      justify-content: center;
+      padding: 40px 16px 80px;
     }
 
-    /* Hero */
+    .container {
+      width: 100%;
+      max-width: 660px;
+      display: flex;
+      flex-direction: column;
+      gap: 28px;
+    }
 
+    /* --- Hero Header --- */
     .hero {
       text-align: center;
-      padding: 5rem 0 3rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
     }
 
-    h1 {
-      font-size: clamp(2.5rem, 7vw, 4rem);
-      line-height: 1.1;
-      margin: 0 0 1rem;
-      letter-spacing: -0.04em;
+    .badge-pill {
+      font-size: 12px;
+      font-weight: 600;
+      color: #4338ca;
+      background: #e0e7ff;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      letter-spacing: 0.02em;
+    }
+
+    .hero h1 {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #0f172a;
     }
 
     .tagline {
-      max-width: 700px;
-      margin: 0 auto 1rem;
-      font-size: clamp(1.35rem, 3vw, 1.75rem);
-      color: var(--text);
-      font-weight: 700;
-      line-height: 1.35;
+      font-size: 16px;
+      font-weight: 600;
+      color: #334155;
     }
 
     .hero-description {
-      max-width: 650px;
-      margin: 0 auto 2rem;
-      color: var(--muted);
-      font-size: 1.1rem;
+      font-size: 14.5px;
+      color: #64748b;
+      max-width: 520px;
+      line-height: 1.5;
     }
 
+    /* --- Button Group --- */
     .btn-group {
       display: flex;
-      gap: 1rem;
-      justify-content: center;
       flex-wrap: wrap;
-      margin-bottom: 1rem;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 6px;
     }
 
-    .btn {
-      display: inline-block;
-      padding: 0.85rem 1.5rem;
-      border-radius: 8px;
-      font-weight: 700;
+    .btn-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 16px;
+      font-size: 13.5px;
+      font-weight: 600;
+      border-radius: 9px;
       text-decoration: none;
-      transition:
-        opacity 0.2s ease,
-        transform 0.2s ease;
+      transition: all 0.15s ease;
     }
 
-    .btn:hover {
-      opacity: 0.9;
+    .btn-link-primary {
+      background: #0f172a;
+      color: #ffffff;
+    }
+
+    .btn-link-primary:hover {
+      background: #1e293b;
       transform: translateY(-1px);
     }
 
-    .btn-primary {
-      background: var(--accent);
-      color: #000;
+    .btn-link-secondary {
+      background: #ffffff;
+      color: #334155;
+      border: 1px solid #cbd5e1;
     }
 
-    .btn-secondary {
-      background: var(--card);
-      color: var(--text);
-      border: 1px solid var(--border);
+    .btn-link-secondary:hover {
+      background: #f1f5f9;
+      border-color: #94a3b8;
+      color: #0f172a;
+      transform: translateY(-1px);
     }
 
-    .trust-line {
-      margin: 0;
-      color: var(--muted);
-      font-size: 0.9rem;
-    }
-
-    /* Visual */
-
-    .preview {
-      margin: 2rem 0 5rem;
-    }
-
-    .media-preview {
+    .quick-nav {
       display: flex;
+      flex-wrap: wrap;
       justify-content: center;
+      gap: 14px;
+      font-size: 13px;
+      margin-top: 4px;
+    }
+
+    .quick-nav a {
+      color: #4f46e5;
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .quick-nav a:hover {
+      text-decoration: underline;
+    }
+
+    /* --- Shared Card Style --- */
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.04), 0 2px 6px -2px rgba(15, 23, 42, 0.02);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #0f172a;
+      display: flex;
       align-items: center;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 0.5rem;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+      gap: 8px;
     }
 
-    .media-preview img {
-      display: block;
-      max-width: 100%;
-      width: auto;
-      height: auto;
-      max-height: 600px;
-      border-radius: 10px;
+    /* --- Sandbox Presets --- */
+    .presets {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
 
-    /* Sections */
-
-    section {
-      margin-bottom: 5rem;
+    .presets-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
 
-    .section-heading {
-      text-align: center;
-      margin-bottom: 2rem;
+    .chips-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
     }
 
-    h2 {
-      margin: 0 0 0.5rem;
-      font-size: 2rem;
-      letter-spacing: -0.02em;
+    .chip {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #334155;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s ease;
     }
 
-    .section-heading p {
-      margin: 0;
-      color: var(--muted);
+    .chip:hover {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+      color: #0f172a;
+      transform: translateY(-1px);
     }
 
-    /* Problem */
-
-    .problem {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 2rem;
-      text-align: center;
+    /* --- Input Area --- */
+    .input-box {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
     }
 
-    .problem p {
-      max-width: 650px;
-      margin: 0 auto;
-      color: var(--muted);
+    textarea {
+      width: 100%;
+      min-height: 110px;
+      padding: 14px;
+      font-family: inherit;
+      font-size: 14px;
+      line-height: 1.5;
+      color: #0f172a;
+      background: #ffffff;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 12px;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
     }
 
-    .problem strong {
-      color: var(--text);
+    textarea::placeholder {
+      color: #94a3b8;
     }
 
-    /* How it works */
+    textarea:focus {
+      border-color: #4f46e5;
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+    }
 
-    .steps {
+    .input-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .model-status {
+      font-size: 12px;
+      color: #64748b;
+    }
+
+    .btn {
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 10px 20px;
+      border-radius: 9px;
+      border: none;
+      background: #0f172a;
+      color: #ffffff;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    .btn:hover {
+      background: #1e293b;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    /* --- Result Box --- */
+    .result-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* --- BADGES: GREEN (Pass), ORANGE (Warning), RED (Flagged) --- */
+    .badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      display: inline-block;
+    }
+
+    /* 🟢 PASS = GREEN */
+    .badge,
+    .badge.pass,
+    .badge.tier-pass,
+    .badge[data-status="pass"] {
+      background-color: #dcfce7;
+      color: #15803d;
+      border: 1px solid #bbf7d0;
+    }
+
+    /* 🟠 WARNING = ORANGE */
+    .badge.warning,
+    .badge.warn,
+    .badge.tier-warning,
+    .badge[data-status="warning"] {
+      background-color: #ffedd5;
+      color: #c2410c;
+      border: 1px solid #fed7aa;
+    }
+
+    /* 🔴 FLAGGED = RED */
+    .badge.flagged,
+    .badge.flag,
+    .badge.tier-flagged,
+    .badge[data-status="flagged"] {
+      background-color: #fee2e2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+    }
+
+    .latency {
+      font-size: 12px;
+      color: #94a3b8;
+      font-weight: 500;
+    }
+
+    .result-text {
+      font-size: 14px;
+      color: #334155;
+      line-height: 1.5;
+    }
+
+    .ai-breakdown {
+      border-top: 1px solid #e2e8f0;
+      padding-top: 10px;
+      margin-top: 4px;
+    }
+
+    .ai-breakdown h4 {
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      margin-bottom: 6px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* --- Info Sections --- */
+    .info-section {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .info-p {
+      font-size: 14.5px;
+      color: #475569;
+    }
+
+    .callout-box {
+      background: #f1f5f9;
+      border-left: 3px solid #4f46e5;
+      padding: 12px 16px;
+      border-radius: 4px 8px 8px 4px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #1e293b;
+    }
+
+    /* --- Steps Grid --- */
+    .steps-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 1rem;
+      gap: 12px;
+      margin-top: 4px;
     }
 
-    .step {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.5rem;
+    @media (max-width: 600px) {
+      .steps-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .step-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
 
     .step-number {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 2rem;
-      height: 2rem;
-      margin-bottom: 0.75rem;
-      border-radius: 50%;
-      background: var(--accent);
-      color: #000;
-      font-weight: 800;
+      font-size: 11px;
+      font-weight: 700;
+      color: #4f46e5;
+      text-transform: uppercase;
     }
 
-    .step h3 {
-      margin: 0 0 0.5rem;
-      font-size: 1.1rem;
+    .step-title {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #0f172a;
     }
 
-    .step p {
-      margin: 0;
-      color: var(--muted);
+    .step-desc {
+      font-size: 12.5px;
+      color: #64748b;
+      line-height: 1.4;
     }
 
-    /* Features */
-
-    .features {
+    /* --- Two Column Feature Box --- */
+    .comparison-grid {
       display: grid;
-      gap: 1rem;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
     }
 
-    .feature {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.4rem 1.5rem;
-    }
-
-    .feature h3 {
-      margin: 0 0 0.4rem;
-      font-size: 1.1rem;
-    }
-
-    .feature p {
-      margin: 0;
-      color: var(--muted);
-    }
-
-    /* AI Platforms */
-
-    .platforms {
-      display: flex;
-      justify-content: center;
-      flex-wrap: wrap;
-      gap: 0.75rem;
-      margin-top: 1.5rem;
-    }
-
-    .platform {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      padding: 0.5rem 1rem;
-      color: var(--text);
-      font-weight: 600;
-    }
-
-    /* Privacy */
-
-    .privacy {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 2rem;
-      text-align: center;
-    }
-
-    .privacy p {
-      max-width: 650px;
-      margin: 0 auto 1rem;
-      color: var(--muted);
-    }
-
-    .privacy strong {
-      color: var(--text);
-    }
-
-    .privacy a {
-      color: var(--accent);
-      font-weight: 600;
-    }
-
-    /* Blog */
-
-    .blog {
-      display: grid;
-      gap: 1rem;
-    }
-
-    .blog-post {
-      display: block;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 1.5rem;
-      text-decoration: none;
-      color: var(--text);
-      transition:
-        transform 0.2s ease,
-        border-color 0.2s ease,
-        background 0.2s ease;
-    }
-
-    .blog-post:hover {
-      transform: translateY(-2px);
-      border-color: var(--accent);
-      background: var(--card-hover);
-    }
-
-    .blog-post h3 {
-      margin: 0 0 0.4rem;
-      font-size: 1.2rem;
-    }
-
-    .blog-post .date {
-      color: var(--accent);
-      font-size: 0.85rem;
-      font-weight: 600;
-      margin-bottom: 0.6rem;
-    }
-
-    .blog-post p {
-      margin: 0;
-      color: var(--muted);
-    }
-
-    /* CTA */
-
-    .final-cta {
-      text-align: center;
-      padding: 1rem 0 5rem;
-    }
-
-    .final-cta p {
-      color: var(--muted);
-      margin: 0 auto 1.5rem;
-      max-width: 600px;
-    }
-
-    /* Footer */
-
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 2rem 0;
-      text-align: center;
-      color: var(--muted);
-      font-size: 0.9rem;
-    }
-
-    footer a {
-      color: var(--muted);
-      text-decoration: none;
-    }
-
-    footer a:hover {
-      color: var(--text);
-    }
-
-    /* Mobile */
-
-    @media (max-width: 650px) {
-      .hero {
-        padding-top: 3.5rem;
-      }
-
-      .steps {
+    @media (max-width: 540px) {
+      .comparison-grid {
         grid-template-columns: 1fr;
       }
+    }
 
-      section {
-        margin-bottom: 3.5rem;
-      }
+    .comparison-col {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 14px;
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
 
-      .preview {
-        margin-bottom: 3.5rem;
-      }
+    .comparison-col h5 {
+      font-size: 13px;
+      font-weight: 700;
+    }
 
-      .privacy,
-      .problem {
-        padding: 1.5rem;
-      }
+    .comparison-col.warn h5 { color: #c2410c; }
+    .comparison-col.pass h5 { color: #15803d; }
+
+    .comparison-list {
+      list-style-position: inside;
+      color: #475569;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    /* --- Platform Tags --- */
+    .platform-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .platform-tag {
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 999px;
+      padding: 5px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #334155;
+    }
+
+    /* --- Install Steps List --- */
+    .install-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-left: 20px;
+      font-size: 13.5px;
+      color: #475569;
+    }
+
+    .install-steps code {
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #0f172a;
+    }
+
+    /* --- Changelog Box --- */
+    .changelog-item {
+      font-size: 13px;
+      color: #475569;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .changelog-item strong {
+      color: #0f172a;
+    }
+
+    /* --- Footer --- */
+    .footer {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      font-size: 12.5px;
+      color: #94a3b8;
+    }
+
+    .footer-links {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 14px;
+    }
+
+    .footer a {
+      color: #64748b;
+      text-decoration: underline;
     }
   </style>
 </head>
-
 <body>
 
-  <main>
-
-    <!-- HERO -->
-
+  <main class="container">
+    
+    <!-- HERO HEADER -->
     <header class="hero">
-      <div class="container">
-
-        <h1>MindShield</h1>
-
-        <p class="tagline">
-          Use AI without letting it do your thinking for you.
-        </p>
-
-        <p class="hero-description">
-          MindShield adds a brief moment of reflection when you ask AI
-          to do something you could easily think through yourself.
-          It helps you stay actively involved while still using AI
-          when it genuinely helps.
-        </p>
-
-        <div class="btn-group">
-
-<a
-            href="https://addons.mozilla.org/en-US/firefox/addon/mindshield/"
-            class="btn btn-primary"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            🦊 Firefox
-          </a>
-
-          <a
-            href="https://github.com/fluryjanis/Mind-Shield/releases/tag/v1.2.0"
-            class="btn btn-secondary"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            🌐 Chrome
-          </a>
-
-          <a
-            href="https://github.com/fluryjanis/Mind-Shield"
-            class="btn btn-secondary"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            ⭐ GitHub
-          </a>
-
-        </div>
-
-        <p class="trust-line">
-          Free · Privacy-first · Local AI · Open source
-        </p>
-
-      </div>
-    </header>
-
-
-    <!-- PROBLEM -->
-
-    <section>
-
-      <div class="container">
-
-        <div class="problem">
-
-          <h2>AI makes it easy to stop thinking.</h2>
-
-          <p>
-            AI can answer questions, write explanations, solve problems,
-            and make decisions almost instantly. That's useful —
-            but it's also easy to start asking AI for things you could
-            have figured out yourself.
-          </p>
-
-          <p style="margin-top: 1rem;">
-            MindShield is designed to add a small amount of friction
-            before that becomes a habit.
-          </p>
-
-        </div>
-
-      </div>
-
-    </section>
-
-
-    <!-- HOW IT WORKS -->
-
-    <section>
-
-      <div class="container">
-
-        <div class="section-heading">
-
-          <h2>How MindShield works</h2>
-
-          <p>
-            A small pause when you need it. No interruption when you don't.
-          </p>
-
-        </div>
-
-        <div class="steps">
-
-          <div class="step">
-
-            <div class="step-number">1</div>
-
-            <h3>Write your prompt</h3>
-
-            <p>
-              Use your AI assistant normally. MindShield works in the
-              background while you type.
-            </p>
-
-          </div>
-
-          <div class="step">
-
-            <div class="step-number">2</div>
-
-            <h3>MindShield evaluates it</h3>
-
-            <p>
-              An on-device model checks whether your request appears
-              to be a simple shortcut or a more substantial task.
-            </p>
-
-          </div>
-
-          <div class="step">
-
-            <div class="step-number">3</div>
-
-            <h3>Pause or continue</h3>
-
-            <p>
-              Simple shortcuts can trigger a brief reflection period.
-              More complex tasks can pass through immediately.
-            </p>
-
-          </div>
-
-        </div>
-
-      </div>
-
-    </section>
-
-
-    <!-- FEATURES -->
-
-    <section>
-
-      <div class="container">
-
-        <div class="section-heading">
-
-          <h2>Designed to keep you thinking</h2>
-
-          <p>
-            MindShield is designed to support AI use, not eliminate it.
-          </p>
-
-        </div>
-
-        <div class="features">
-
-          <article class="feature">
-
-            <h3>🧠 A speed bump for unnecessary AI use</h3>
-
-            <p>
-              When a prompt looks like a simple shortcut, MindShield
-              introduces a short pause that gives you a chance to
-              think before relying on AI.
-            </p>
-
-          </article>
-
-          <article class="feature">
-
-            <h3>⚡ Don't interrupt productive work</h3>
-
-            <p>
-              Complex prompts, educational requests, debugging,
-              research, and other substantial tasks can bypass the
-              reflection delay.
-            </p>
-
-          </article>
-
-          <article class="feature">
-
-            <h3>🔒 Your prompts stay on your device</h3>
-
-            <p>
-              Prompt evaluation uses an on-device machine-learning
-              model. Your prompts aren't sent to an external server
-              for classification.
-            </p>
-
-          </article>
-
-          <article class="feature">
-
-            <h3>🌐 Works across popular AI assistants</h3>
-
-            <p>
-              MindShield supports ChatGPT, Claude, Google Gemini,
-              and Grok.
-            </p>
-
-          </article>
-
-        </div>
-
-        <div class="platforms">
-
-          <span class="platform">ChatGPT</span>
-          <span class="platform">Claude</span>
-          <span class="platform">Gemini</span>
-          <span class="platform">Grok</span>
-
-        </div>
-
-      </div>
-
-    </section>
-
-
-    <!-- WHY -->
-
-    <section>
-
-      <div class="container">
-
-        <div class="section-heading">
-
-          <h2>AI should be a partner, not a replacement for thinking.</h2>
-
-          <p>
-            MindShield is built around that idea.
-          </p>
-
-        </div>
-
-        <div class="problem">
-
-          <p>
-            You don't need to stop using AI. You just don't want to
-            automatically outsource every small decision, calculation,
-            explanation, or problem to it.
-          </p>
-
-          <p style="margin-top: 1rem;">
-            MindShield creates a small moment where you can decide:
-            <strong>
-              "Do I actually need AI for this?"
-            </strong>
-          </p>
-
-        </div>
-
-      </div>
-
-    </section>
-
-
-    <!-- PRIVACY -->
-
-    <section>
-
-      <div class="container">
-
-        <div class="privacy">
-
-          <h2>Your prompts stay private.</h2>
-
-          <p>
-            MindShield performs prompt classification locally in your
-            browser using a machine-learning model compiled for
-            WebAssembly.
-          </p>
-
-          <p>
-            Your prompts are not sent to an external classification
-            server.
-          </p>
-
-          <p>
-            <strong>
-              No tracking. No analytics. No cloud prompt analysis.
-            </strong>
-          </p>
-
-          <p>
-            The project is open source, so you can inspect how it works
-            yourself.
-          </p>
-
-          <a
-            href="https://github.com/fluryjanis/Mind-Shield"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            View the source code on GitHub →
-          </a>
-
-        </div>
-
-      </div>
-
-    </section>
-
-
-    <!-- BLOG -->
-
-    <section>
-
-      <div class="container">
-
-        <div class="section-heading">
-
-          <h2>Development & Blog</h2>
-
-          <p>
-            Development updates, release notes, and thoughts behind MindShield.
-          </p>
-
-        </div>
-
-        <div class="blog">
-
-          <a
-  href="https://fluryjanis.github.io/frog1230.github.io/blog/v1.1.0.html"
-  class="blog-post"
->
-
-            <div class="date">
-              August 2026 · Version 1.1.0
-            </div>
-
-            <h3>
-              MindShield 1.1.0 — Improving the Reflection Experience
-            </h3>
-
-            <p>
-              A look at the UI improvements, prompt detection changes,
-              user experience updates, and cleanup introduced in MindShield 1.1.0.
-            </p>
-
-          </a>
-
-           <a
-  href="https://fluryjanis.github.io/frog1230.github.io/blog/MindShield-v1.2.0-Update.html"
-  class="blog-post"
->
-
-            <div class="date">
-              August 2026 · Version 1.2.0
-            </div>
-
-            <h3>
-              MindShield v1.2.0: local model and flagging rework + bug fixes
-            </h3>
-
-            <p>
-              Better detection with a 3 teir sytem and anoying bugs have been fixed
-            </p>
-
-          </a>
-
-        </div>
-
-      </div>
-
-    </section>
-
-
-    <!-- FINAL CTA -->
-
-    <section class="final-cta">
-
-      <div class="container">
-
-        <div class="section-heading">
-
-          <h2>Keep AI useful. Keep your thinking yours.</h2>
-
-        </div>
-
-        <p>
-          Add a small moment of reflection to your AI workflow without
-          giving up the tools you use every day.
-        </p>
-
-        <div class="btn-group">
-
-          <a
-            href="https://github.com/fluryjanis/Mind-Shield-Firefox/releases/tag/v1.1.5"
-            class="btn btn-primary"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            🦊 Download for Firefox
-          </a>
-
-          <a
-            href="https://github.com/fluryjanis/Mind-Shield/releases/tag/v1.1.5"
-            class="btn btn-secondary"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            🌐 Download for Chrome
-          </a>
-
-        </div>
-
-      </div>
-
-    </section>
-
-  </main>
-
-
-  <!-- FOOTER -->
-
-  <footer>
-
-    <div class="container">
-
-      <p>
-        MindShield ·
-        Created by
+      <span class="badge-pill">🛡️ MindShield v1.2.0</span>
+      <h1>MindShield</h1>
+      <p class="tagline">Use AI without letting it do your thinking for you.</p>
+      
+      <p class="hero-description">
+        MindShield adds a brief moment of reflection when you ask AI
+        to do something you could easily think through yourself.
+        It helps you stay actively involved while still using AI
+        when it genuinely helps.
+      </p>
+
+      <!-- Action Buttons -->
+      <div class="btn-group">
         <a
-          href="https://fluryjanis.github.io/frog1230.github.io/"
+          href="https://addons.mozilla.org/en-US/firefox/addon/mindshield/"
+          class="btn-link btn-link-primary"
           target="_blank"
           rel="noopener noreferrer"
         >
-          Frog1230
+          🦊 Firefox
         </a>
-      </p>
 
-      <p>
+        <a
+          href="https://github.com/fluryjanis/Mind-Shield/releases/tag/v1.2.0"
+          class="btn-link btn-link-secondary"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          🌐 Chrome v1.2.0
+        </a>
 
         <a
           href="https://github.com/fluryjanis/Mind-Shield"
+          class="btn-link btn-link-secondary"
           target="_blank"
           rel="noopener noreferrer"
         >
-          Open source on GitHub
+          ⭐ GitHub
         </a>
+      </div>
 
+      <!-- Quick Navigation with Game Link -->
+      <div class="quick-nav">
+        <a href="#sandbox">Live Sandbox ↓</a>
+        <a href="#about">What Is MindShield? ↓</a>
+        <a href="https://fluryjanis.github.io/frog1230.github.io/Web-mindshield/game.html" target="_blank" rel="noopener noreferrer">🎮 Play the Game →</a>
+        <a href="mindshield-test.html">🧠 Take the Quiz →</a>
+      </div>
+    </header>
+
+    <!-- SECTION 1: Interactive Prompt Sandbox -->
+    <section id="sandbox" class="card">
+      <h2 class="card-title">🧪 Live Prompt Sandbox</h2>
+      
+      <!-- Preset Quick Buttons -->
+      <div class="presets">
+        <span class="presets-label">Click a quick example</span>
+        <div class="chips-grid">
+          <button type="button" class="chip" data-prompt="What is C++?">📘 Facts</button>
+          <button type="button" class="chip" data-prompt="Why does the Doppler effect occur?">🔍 Science</button>
+          <button type="button" class="chip" data-prompt="15 * 42">🔢 Math</button>
+          <button type="button" class="chip" data-prompt="This person commented something confusing. What should I respond with?">💬 Social</button>
+          <button type="button" class="chip" data-prompt="Solve this riddle: I speak without a mouth and hear without ears.">🧠 Riddle</button>
+        </div>
+      </div>
+
+      <!-- Text Input & Button -->
+      <div class="input-box">
+        <textarea id="sandbox-input" placeholder="Type or paste any prompt here to see how MindShield evaluates it..."></textarea>
+        <div class="input-footer">
+          <span id="model-status" class="model-status">Loading model...</span>
+          <button id="evaluate-btn" class="btn">Check Prompt</button>
+        </div>
+      </div>
+
+      <!-- Result Card -->
+      <div id="sandbox-result" class="result-card hidden">
+        <div class="result-header">
+          <span id="tier-badge" class="badge">PASS</span>
+          <span id="latency-text" class="latency">0ms</span>
+        </div>
+        <p id="tier-explanation" class="result-text"></p>
+        
+        <div id="ai-breakdown" class="ai-breakdown hidden">
+          <h4>Detailed Scores (DistilBERT-MNLI)</h4>
+          <div id="probabilities"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: What is MindShield? -->
+    <section id="about" class="card info-section">
+      <h2 class="card-title">🧠 What Is MindShield?</h2>
+      <p class="info-p">
+        AI makes it easy to ask for an answer before you've had a chance to think about the problem yourself. MindShield adds a small amount of friction to those moments.
       </p>
+      
+      <div class="callout-box">
+        Instead of blocking AI, it asks: <strong>"Do you actually need AI for this?"</strong>
+      </div>
 
-    </div>
+      <p class="info-p">
+        The goal isn’t less AI. It’s more intentional AI use. Simple shortcut requests trigger a brief reflection pause, while substantial requests pass through immediately.
+      </p>
+    </section>
 
-  </footer>
+    <!-- SECTION 3: How It Works -->
+    <section class="card info-section">
+      <h2 class="card-title">⚡ How It Works</h2>
+      <div class="steps-grid">
+        <div class="step-card">
+          <span class="step-number">Step 1</span>
+          <h4 class="step-title">Write Prompt</h4>
+          <p class="step-desc">Use ChatGPT, Claude, Gemini, or Grok normally in your browser.</p>
+        </div>
+        <div class="step-card">
+          <span class="step-number">Step 2</span>
+          <h4 class="step-title">Local Check</h4>
+          <p class="step-desc">An on-device model checks whether your request is a simple shortcut or real work.</p>
+        </div>
+        <div class="step-card">
+          <span class="step-number">Step 3</span>
+          <h4 class="step-title">Pause or Pass</h4>
+          <p class="step-desc">Shortcuts trigger a reflection period. Substantial tasks submit immediately.</p>
+        </div>
+      </div>
+    </section>
 
+    <!-- SECTION 4: What MindShield Is Designed For -->
+    <section class="card info-section">
+      <h2 class="card-title">🎯 Designed For Better Thinking</h2>
+      <div class="comparison-grid">
+        <div class="comparison-col warn">
+          <h5>Adds Reflection Pause</h5>
+          <ul class="comparison-list">
+            <li>Simple calculations (e.g. 15 * 42)</li>
+            <li>Basic trivia you easily remember</li>
+            <li>Making quick social decisions for you</li>
+            <li>Shortcuts before trying to solve it</li>
+          </ul>
+        </div>
+        <div class="comparison-col pass">
+          <h5>Passes Immediately</h5>
+          <ul class="comparison-list">
+            <li>Deep research & learning</li>
+            <li>Code debugging & architecture</li>
+            <li>Complex problem solving</li>
+            <li>Long-form content drafting</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 5: Supported Platforms & Privacy -->
+    <section class="card info-section">
+      <h2 class="card-title">🌐 Supported Platforms & Privacy</h2>
+      <div class="platform-tags">
+        <span class="platform-tag">ChatGPT</span>
+        <span class="platform-tag">Claude</span>
+        <span class="platform-tag">Google Gemini</span>
+        <span class="platform-tag">Grok</span>
+      </div>
+
+      <p class="info-p">
+        🔒 <strong>100% On-Device & Private:</strong> MindShield performs prompt evaluation locally using a WebAssembly machine-learning model (DistilBERT-MNLI). Your prompts are <strong>never</strong> sent to an external server. No tracking, no analytics, no cloud prompt analysis.
+      </p>
+    </section>
+
+    <!-- SECTION 6: Install MindShield -->
+    <section id="install" class="card info-section">
+      <h2 class="card-title">📥 Install MindShield</h2>
+      
+      <div class="btn-group" style="justify-content: flex-start;">
+        <a
+          href="https://addons.mozilla.org/en-US/firefox/addon/mindshield/"
+          class="btn-link btn-link-primary"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          🦊 Add to Firefox
+        </a>
+        <a
+          href="https://github.com/fluryjanis/Mind-Shield/releases/tag/v1.2.0"
+          class="btn-link btn-link-secondary"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          🌐 Chrome v1.2.0 ZIP
+        </a>
+      </div>
+
+      <h4 style="font-size: 13.5px; font-weight: 600; margin-top: 6px;">Chrome / Chromium Installation:</h4>
+      <ol class="install-steps">
+        <li>Download the ZIP from the <a href="https://github.com/fluryjanis/Mind-Shield/releases/tag/v1.2.0" target="_blank" rel="noopener noreferrer" style="color:#4f46e5;">v1.2.0 release</a> and extract it.</li>
+        <li>Open <code>chrome://extensions/</code> in your browser.</li>
+        <li>Enable <strong>Developer mode</strong> (top right).</li>
+        <li>Click <strong>Load unpacked</strong> and select the extracted MindShield folder.</li>
+      </ol>
+    </section>
+
+    <!-- SECTION 7: Changelog -->
+    <section class="card info-section">
+      <h2 class="card-title">📜 Changelog Highlights</h2>
+      <div class="changelog-item">
+        <strong>v1.2.0 (Latest)</strong>
+        <p class="info-p">Official Firefox Add-on release, refined prompt heuristic accuracy, and performance optimizations.</p>
+      </div>
+      <div class="changelog-item" style="margin-top: 6px;">
+        <strong>v1.1.0</strong>
+        <p class="info-p">Added auto-focus, question-specific heuristics, and tuned neural classifier to minimize false positives.</p>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>Free · Privacy-first · Local AI · Open source under MIT License</p>
+      <div class="footer-links">
+        <a href="https://fluryjanis.github.io/frog1230.github.io/Web-mindshield/game.html" target="_blank" rel="noopener noreferrer">🎮 Play the Game</a>
+        <a href="mindshield-test.html">🧠 Take the Quiz</a>
+        <a href="https://github.com/fluryjanis/Mind-Shield" target="_blank" rel="noopener noreferrer">⭐ GitHub</a>
+      </div>
+    </footer>
+
+  </main>
+
+  <!-- Auto-Badge Color Detector (Green / Orange / Red) -->
+  <script>
+    const badge = document.getElementById('tier-badge');
+    if (badge) {
+      const updateBadgeColor = () => {
+        const text = badge.textContent.trim().toUpperCase();
+        badge.classList.remove('pass', 'warning', 'flagged');
+        if (text.includes('WARN')) {
+          badge.classList.add('warning');
+        } else if (text.includes('FLAG') || text.includes('FAIL') || text.includes('BLOCK')) {
+          badge.classList.add('flagged');
+        } else {
+          badge.classList.add('pass');
+        }
+      };
+
+      const observer = new MutationObserver(updateBadgeColor);
+      observer.observe(badge, { childList: true, characterData: true, subtree: true });
+      updateBadgeColor();
+    }
+  </script>
+
+  <script type="module" src="sandbox.js"></script>
 </body>
 </html>
