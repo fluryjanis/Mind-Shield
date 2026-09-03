@@ -191,7 +191,7 @@
       text-decoration: underline;
     }
 
-    /* How It Works Steps */
+    /* Steps */
     .steps {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -267,6 +267,71 @@
       padding: 0.5rem 1rem;
       color: var(--text);
       font-weight: 600;
+    }
+
+    /* FAQ Accordion */
+    .faq-list {
+      display: grid;
+      gap: 0.85rem;
+    }
+
+    .faq-item {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: border-color 0.2s ease, background-color 0.2s ease;
+    }
+
+    .faq-item[open] {
+      border-color: var(--accent);
+      background: var(--card-hover);
+    }
+
+    .faq-question {
+      padding: 1.2rem 1.5rem;
+      font-weight: 700;
+      font-size: 1.05rem;
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+      color: var(--text);
+    }
+
+    .faq-question::-webkit-details-marker {
+      display: none;
+    }
+
+    .faq-icon {
+      color: var(--accent);
+      font-size: 1.1rem;
+      transition: transform 0.2s ease;
+      margin-left: 1rem;
+      flex-shrink: 0;
+    }
+
+    .faq-item[open] .faq-icon {
+      transform: rotate(90deg);
+    }
+
+    .faq-answer {
+      padding: 0 1.5rem 1.3rem;
+      color: var(--muted);
+      margin: 0;
+      line-height: 1.6;
+    }
+
+    .faq-answer a {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .faq-answer a:hover {
+      text-decoration: underline;
     }
 
     /* Blog */
@@ -355,6 +420,15 @@
 
       .highlight-card {
         padding: 1.5rem;
+      }
+
+      .faq-question {
+        padding: 1rem 1.25rem;
+        font-size: 1rem;
+      }
+
+      .faq-answer {
+        padding: 0 1.25rem 1.15rem;
       }
     }
   </style>
@@ -618,6 +692,131 @@
               user experience updates, and cleanup introduced in MindShield 1.1.0.
             </p>
           </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- FREQUENTLY ASKED QUESTIONS -->
+    <section id="faq" aria-label="Frequently Asked Questions">
+      <div class="container">
+        <div class="section-heading">
+          <h2>Frequently Asked Questions</h2>
+          <p>Everything you need to know about MindShield.</p>
+        </div>
+
+        <div class="faq-list">
+
+          <details class="faq-item">
+            <summary class="faq-question">
+              <span>What is MindShield?</span>
+              <span class="faq-icon">▸</span>
+            </summary>
+            <div class="faq-answer">
+              <p>
+                MindShield is a privacy-first browser extension designed to help you avoid
+                unconscious AI dependence. By introducing a gentle, brief pause before simple queries,
+                it encourages you to think independently while keeping AI readily available for genuine, complex work.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-question">
+              <span>Does MindShield send my prompts anywhere?</span>
+              <span class="faq-icon">▸</span>
+            </summary>
+            <div class="faq-answer">
+              <p>
+                No. Never. Your prompt text never leaves your browser. Classification runs 100% locally
+                on your computer via an on-device machine-learning model compiled to WebAssembly. There are no analytics,
+                no telemetry servers, and no cloud loggers.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-question">
+              <span>Does MindShield block AI?</span>
+              <span class="faq-icon">▸</span>
+            </summary>
+            <div class="faq-answer">
+              <p>
+                No. MindShield is not an AI blocker or website restrictor. It acts as an intentional speed bump.
+                When a query is flagged as a basic shortcut, it simply pauses submission for a short reflection period.
+                Once that moment passes, or if your prompt is substantial, you can submit immediately.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-question">
+              <span>Why does MindShield pause some prompts?</span>
+              <span class="faq-icon">▸</span>
+            </summary>
+            <div class="faq-answer">
+              <p>
+                Over time, using AI for every minor calculation, simple sentence rewrite, or basic factual lookup
+                trains our brain to stop trying. Pausing these trivial queries introduces just enough friction to prompt
+                the thought: <em>"Can I think through this myself first?"</em>
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-question">
+              <span>What is cognitive offloading?</span>
+              <span class="faq-icon">▸</span>
+            </summary>
+            <div class="faq-answer">
+              <p>
+                Cognitive offloading is the practice of delegating mental tasks—like reasoning, remembering,
+                or analyzing—to external digital tools. While useful, excessive offloading reduces cognitive
+                engagement and weakens critical problem-solving habits over time.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-question">
+              <span>Which AI assistants does it support?</span>
+              <span class="faq-icon">▸</span>
+            </summary>
+            <div class="faq-answer">
+              <p>
+                MindShield currently supports ChatGPT, Claude, Google Gemini, and Grok web interfaces,
+                with ongoing updates to support more platforms.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-question">
+              <span>Is MindShield open source?</span>
+              <span class="faq-icon">▸</span>
+            </summary>
+            <div class="faq-answer">
+              <p>
+                Yes. MindShield is entirely open source. You can inspect the classification logic,
+                review extension permissions, or contribute directly on
+                <a href="https://github.com/fluryjanis/Mind-Shield" target="_blank" rel="noopener noreferrer">GitHub</a>.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-question">
+              <span>How does the local AI model work?</span>
+              <span class="faq-icon">▸</span>
+            </summary>
+            <div class="faq-answer">
+              <p>
+                MindShield packages a compact, optimized classifier compiled to WebAssembly (Wasm).
+                It assesses the complexity, intent, and depth of your query in milliseconds right inside
+                your browser tab—achieving fast, privacy-preserving evaluation without requiring an external API key.
+              </p>
+            </div>
+          </details>
+
         </div>
       </div>
     </section>
