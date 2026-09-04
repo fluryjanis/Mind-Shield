@@ -4,17 +4,31 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <title>MindShield — Use AI Without Losing Your Thinking</title>
+  <meta
+    name="description"
+    content="MindShield is a privacy-first browser extension that helps you avoid unnecessary AI dependence by adding a brief reflection pause before simple AI requests."
+  >
+  <link rel="canonical" href="https://fluryjanis.github.io/Mind-Shield/">
+  <link rel="icon" type="image/png" href="favicon.png">
+
+  <!-- Verification -->
   <meta
     name="google-site-verification"
     content="E7H7P8Ax633TA144bj1ShaNFLbdh_RKFe-wyt92ierw"
   >
 
-  <title>MindShield — Use AI Without Losing Your Thinking</title>
+  <!-- Open Graph / Social Sharing -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://fluryjanis.github.io/Mind-Shield/">
+  <meta property="og:title" content="MindShield — Use AI Without Losing Your Thinking">
+  <meta property="og:description" content="A privacy-first browser extension that introduces a brief moment of reflection before relying on AI for simple questions.">
+  <meta property="og:image" content="https://fluryjanis.github.io/Mind-Shield/favicon.png">
 
-  <meta
-    name="description"
-    content="MindShield is a privacy-first browser extension that helps you avoid unnecessary AI dependence by adding a brief reflection pause before simple AI requests."
-  >
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="MindShield — Use AI Without Losing Your Thinking">
+  <meta name="twitter:description" content="A privacy-first browser extension that introduces a brief moment of reflection before relying on AI for simple questions.">
 
   <style>
     :root {
@@ -25,7 +39,6 @@
       --accent: #38bdf8;
       --muted: #94a3b8;
       --border: #334155;
-      --warning: #fbbf24;
     }
 
     * {
@@ -38,12 +51,7 @@
 
     body {
       margin: 0;
-      font-family:
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        Roboto,
-        sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: var(--bg);
       color: var(--text);
       line-height: 1.6;
@@ -56,10 +64,19 @@
     }
 
     /* Hero */
-
     .hero {
       text-align: center;
       padding: 5rem 0 3rem;
+    }
+
+    .creator-line {
+      margin: 0 auto 1.5rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .creator-line strong {
+      color: var(--text);
     }
 
     h1 {
@@ -99,9 +116,7 @@
       border-radius: 8px;
       font-weight: 700;
       text-decoration: none;
-      transition:
-        opacity 0.2s ease,
-        transform 0.2s ease;
+      transition: opacity 0.2s ease, transform 0.2s ease;
     }
 
     .btn:hover {
@@ -126,34 +141,7 @@
       font-size: 0.9rem;
     }
 
-    /* Visual */
-
-    .preview {
-      margin: 2rem 0 5rem;
-    }
-
-    .media-preview {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 0.5rem;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
-    }
-
-    .media-preview img {
-      display: block;
-      max-width: 100%;
-      width: auto;
-      height: auto;
-      max-height: 600px;
-      border-radius: 10px;
-    }
-
     /* Sections */
-
     section {
       margin-bottom: 5rem;
     }
@@ -174,9 +162,8 @@
       color: var(--muted);
     }
 
-    /* Problem */
-
-    .problem {
+    /* Highlight Card Boxes */
+    .highlight-card {
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: 14px;
@@ -184,18 +171,27 @@
       text-align: center;
     }
 
-    .problem p {
+    .highlight-card p {
       max-width: 650px;
       margin: 0 auto;
       color: var(--muted);
     }
 
-    .problem strong {
+    .highlight-card strong {
       color: var(--text);
     }
 
-    /* How it works */
+    .highlight-card a {
+      color: var(--accent);
+      font-weight: 600;
+      text-decoration: none;
+    }
 
+    .highlight-card a:hover {
+      text-decoration: underline;
+    }
+
+    /* Steps */
     .steps {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -233,7 +229,6 @@
     }
 
     /* Features */
-
     .features {
       display: grid;
       gap: 1rem;
@@ -256,8 +251,7 @@
       color: var(--muted);
     }
 
-    /* AI Platforms */
-
+    /* Supported Platforms */
     .platforms {
       display: flex;
       justify-content: center;
@@ -275,33 +269,72 @@
       font-weight: 600;
     }
 
-    /* Privacy */
+    /* FAQ Accordion */
+    .faq-list {
+      display: grid;
+      gap: 0.85rem;
+    }
 
-    .privacy {
+    .faq-item {
       background: var(--card);
       border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 2rem;
-      text-align: center;
+      border-radius: 12px;
+      overflow: hidden;
+      transition: border-color 0.2s ease, background-color 0.2s ease;
     }
 
-    .privacy p {
-      max-width: 650px;
-      margin: 0 auto 1rem;
-      color: var(--muted);
+    .faq-item[open] {
+      border-color: var(--accent);
+      background: var(--card-hover);
     }
 
-    .privacy strong {
+    .faq-question {
+      padding: 1.2rem 1.5rem;
+      font-weight: 700;
+      font-size: 1.05rem;
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
       color: var(--text);
     }
 
-    .privacy a {
+    .faq-question::-webkit-details-marker {
+      display: none;
+    }
+
+    .faq-icon {
       color: var(--accent);
+      font-size: 1.1rem;
+      transition: transform 0.2s ease;
+      margin-left: 1rem;
+      flex-shrink: 0;
+    }
+
+    .faq-item[open] .faq-icon {
+      transform: rotate(90deg);
+    }
+
+    .faq-answer {
+      padding: 0 1.5rem 1.3rem;
+      color: var(--muted);
+      margin: 0;
+      line-height: 1.6;
+    }
+
+    .faq-answer a {
+      color: var(--accent);
+      text-decoration: none;
       font-weight: 600;
     }
 
-    /* Blog */
+    .faq-answer a:hover {
+      text-decoration: underline;
+    }
 
+    /* Blog */
     .blog {
       display: grid;
       gap: 1rem;
@@ -315,10 +348,7 @@
       padding: 1.5rem;
       text-decoration: none;
       color: var(--text);
-      transition:
-        transform 0.2s ease,
-        border-color 0.2s ease,
-        background 0.2s ease;
+      transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
     }
 
     .blog-post:hover {
@@ -344,8 +374,7 @@
       color: var(--muted);
     }
 
-    /* CTA */
-
+    /* Final CTA */
     .final-cta {
       text-align: center;
       padding: 1rem 0 5rem;
@@ -358,7 +387,6 @@
     }
 
     /* Footer */
-
     footer {
       border-top: 1px solid var(--border);
       padding: 2rem 0;
@@ -376,8 +404,7 @@
       color: var(--text);
     }
 
-    /* Mobile */
-
+    /* Mobile Responsive */
     @media (max-width: 650px) {
       .hero {
         padding-top: 3.5rem;
@@ -391,13 +418,17 @@
         margin-bottom: 3.5rem;
       }
 
-      .preview {
-        margin-bottom: 3.5rem;
+      .highlight-card {
+        padding: 1.5rem;
       }
 
-      .privacy,
-      .problem {
-        padding: 1.5rem;
+      .faq-question {
+        padding: 1rem 1.25rem;
+        font-size: 1rem;
+      }
+
+      .faq-answer {
+        padding: 0 1.25rem 1.15rem;
       }
     }
   </style>
@@ -408,7 +439,6 @@
   <main>
 
     <!-- HERO -->
-
     <header class="hero">
       <div class="container">
 
@@ -425,9 +455,12 @@
           when it genuinely helps.
         </p>
 
-        <div class="btn-group">
+        <p class="creator-line">
+          An open-source project by <strong>Janis Flury (Frog1230)</strong>.
+        </p>
 
-<a
+        <div class="btn-group">
+          <a
             href="https://addons.mozilla.org/en-US/firefox/addon/mindshield/"
             class="btn btn-primary"
             target="_blank"
@@ -437,7 +470,7 @@
           </a>
 
           <a
-            href="https://github.com/fluryjanis/Mind-Shield/releases/tag/v1.1.5"
+            href="https://github.com/fluryjanis/Mind-Shield/releases/tag/v1.2.0"
             class="btn btn-secondary"
             target="_blank"
             rel="noopener noreferrer"
@@ -453,7 +486,6 @@
           >
             ⭐ GitHub
           </a>
-
         </div>
 
         <p class="trust-line">
@@ -463,321 +495,340 @@
       </div>
     </header>
 
-
-    <!-- PROBLEM -->
-
-    <section>
-
+    <!-- THE PROBLEM -->
+    <section id="problem" aria-label="The Problem">
       <div class="container">
-
-        <div class="problem">
-
+        <div class="highlight-card">
           <h2>AI makes it easy to stop thinking.</h2>
-
           <p>
             AI can answer questions, write explanations, solve problems,
             and make decisions almost instantly. That's useful —
             but it's also easy to start asking AI for things you could
             have figured out yourself.
           </p>
-
           <p style="margin-top: 1rem;">
             MindShield is designed to add a small amount of friction
             before that becomes a habit.
           </p>
-
         </div>
-
       </div>
-
     </section>
 
-
     <!-- HOW IT WORKS -->
-
-    <section>
-
+    <section id="how-it-works" aria-label="How it works">
       <div class="container">
-
         <div class="section-heading">
-
           <h2>How MindShield works</h2>
-
-          <p>
-            A small pause when you need it. No interruption when you don't.
-          </p>
-
+          <p>A small pause when you need it. No interruption when you don't.</p>
         </div>
 
         <div class="steps">
-
           <div class="step">
-
             <div class="step-number">1</div>
-
             <h3>Write your prompt</h3>
-
             <p>
               Use your AI assistant normally. MindShield works in the
               background while you type.
             </p>
-
           </div>
 
           <div class="step">
-
             <div class="step-number">2</div>
-
             <h3>MindShield evaluates it</h3>
-
             <p>
               An on-device model checks whether your request appears
               to be a simple shortcut or a more substantial task.
             </p>
-
           </div>
 
           <div class="step">
-
             <div class="step-number">3</div>
-
             <h3>Pause or continue</h3>
-
             <p>
               Simple shortcuts can trigger a brief reflection period.
               More complex tasks can pass through immediately.
             </p>
-
           </div>
-
         </div>
-
       </div>
-
     </section>
 
-
     <!-- FEATURES -->
-
-    <section>
-
+    <section id="features" aria-label="Features">
       <div class="container">
-
         <div class="section-heading">
-
           <h2>Designed to keep you thinking</h2>
-
-          <p>
-            MindShield is designed to support AI use, not eliminate it.
-          </p>
-
+          <p>MindShield is designed to support AI use, not eliminate it.</p>
         </div>
 
         <div class="features">
-
           <article class="feature">
-
             <h3>🧠 A speed bump for unnecessary AI use</h3>
-
             <p>
               When a prompt looks like a simple shortcut, MindShield
               introduces a short pause that gives you a chance to
               think before relying on AI.
             </p>
-
           </article>
 
           <article class="feature">
-
             <h3>⚡ Don't interrupt productive work</h3>
-
             <p>
               Complex prompts, educational requests, debugging,
               research, and other substantial tasks can bypass the
               reflection delay.
             </p>
-
           </article>
 
           <article class="feature">
-
             <h3>🔒 Your prompts stay on your device</h3>
-
             <p>
               Prompt evaluation uses an on-device machine-learning
               model. Your prompts aren't sent to an external server
               for classification.
             </p>
-
           </article>
 
           <article class="feature">
-
             <h3>🌐 Works across popular AI assistants</h3>
-
             <p>
               MindShield supports ChatGPT, Claude, Google Gemini,
               and Grok.
             </p>
-
           </article>
-
         </div>
 
         <div class="platforms">
-
           <span class="platform">ChatGPT</span>
           <span class="platform">Claude</span>
           <span class="platform">Gemini</span>
           <span class="platform">Grok</span>
-
         </div>
-
       </div>
-
     </section>
 
-
-    <!-- WHY -->
-
-    <section>
-
+    <!-- PHILOSOPHY / WHY -->
+    <section id="philosophy" aria-label="Philosophy">
       <div class="container">
-
         <div class="section-heading">
-
           <h2>AI should be a partner, not a replacement for thinking.</h2>
-
-          <p>
-            MindShield is built around that idea.
-          </p>
-
+          <p>MindShield is built around that idea.</p>
         </div>
 
-        <div class="problem">
-
+        <div class="highlight-card">
           <p>
             You don't need to stop using AI. You just don't want to
             automatically outsource every small decision, calculation,
             explanation, or problem to it.
           </p>
-
           <p style="margin-top: 1rem;">
             MindShield creates a small moment where you can decide:
-            <strong>
-              "Do I actually need AI for this?"
-            </strong>
+            <strong>"Do I actually need AI for this?"</strong>
           </p>
-
         </div>
-
       </div>
-
     </section>
 
-
     <!-- PRIVACY -->
-
-    <section>
-
+    <section id="privacy" aria-label="Privacy">
       <div class="container">
-
-        <div class="privacy">
-
+        <div class="highlight-card">
           <h2>Your prompts stay private.</h2>
-
           <p>
             MindShield performs prompt classification locally in your
             browser using a machine-learning model compiled for
             WebAssembly.
           </p>
-
           <p>
-            Your prompts are not sent to an external classification
-            server.
+            Your prompts are not sent to an external classification server.
           </p>
-
           <p>
-            <strong>
-              No tracking. No analytics. No cloud prompt analysis.
-            </strong>
+            <strong>No tracking. No analytics. No cloud prompt analysis.</strong>
           </p>
-
-          <p>
-            The project is open source, so you can inspect how it works
-            yourself.
+          <p style="margin-top: 1rem;">
+            The project is open source, so you can inspect how it works yourself.
           </p>
-
-          <a
-            href="https://github.com/fluryjanis/Mind-Shield"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            View the source code on GitHub →
-          </a>
-
+          <p style="margin-top: 1rem;">
+            <a
+              href="https://github.com/fluryjanis/Mind-Shield"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View the source code on GitHub →
+            </a>
+          </p>
         </div>
-
       </div>
-
     </section>
 
-
     <!-- BLOG -->
-
-    <section>
-
+    <section id="blog" aria-label="Blog and Updates">
       <div class="container">
-
         <div class="section-heading">
-
           <h2>Development & Blog</h2>
-
-          <p>
-            Development updates, release notes, and thoughts behind MindShield.
-          </p>
-
+          <p>Development updates, release notes, and thoughts behind MindShield.</p>
         </div>
 
         <div class="blog">
+          <a
+            href="https://fluryjanis.github.io/frog1230.github.io/blog/MindShield-v1.2.0-Update.html"
+            class="blog-post"
+          >
+            <div class="date">August 2026 · Version 1.2.0</div>
+            <h3>MindShield 1.2.0 — Local Model, Flagging Rework & Bug Fixes</h3>
+            <p>
+              Better detection with a 3-tier system, and annoying bugs have been fixed.
+            </p>
+          </a>
 
           <a
-  href="https://fluryjanis.github.io/frog1230.github.io/blog/v1.1.0.html"
-  class="blog-post"
->
-
-            <div class="date">
-              August 2026 · Version 1.1.0
-            </div>
-
-            <h3>
-              MindShield 1.1.0 — Improving the Reflection Experience
-            </h3>
-
+            href="https://fluryjanis.github.io/frog1230.github.io/blog/v1.1.0.html"
+            class="blog-post"
+          >
+            <div class="date">August 2026 · Version 1.1.0</div>
+            <h3>MindShield 1.1.0 — Improving the Reflection Experience</h3>
             <p>
               A look at the UI improvements, prompt detection changes,
               user experience updates, and cleanup introduced in MindShield 1.1.0.
             </p>
-
           </a>
-
         </div>
-
       </div>
-
     </section>
 
+    <!-- FREQUENTLY ASKED QUESTIONS -->
+    <section id="faq" aria-label="Frequently Asked Questions">
+      <div class="container">
+        <div class="section-heading">
+          <h2>Frequently Asked Questions</h2>
+          <p>Everything you need to know about MindShield.</p>
+        </div>
+
+        <div class="faq-list">
+
+          <details class="faq-item">
+            <summary class="faq-question">
+              <span>What is MindShield?</span>
+              <span class="faq-icon">▸</span>
+            </summary>
+            <div class="faq-answer">
+              <p>
+                MindShield is a privacy-first browser extension designed to help you avoid
+                unconscious AI dependence. By introducing a gentle, brief pause before simple queries,
+                it encourages you to think independently while keeping AI readily available for genuine, complex work.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-question">
+              <span>Does MindShield send my prompts anywhere?</span>
+              <span class="faq-icon">▸</span>
+            </summary>
+            <div class="faq-answer">
+              <p>
+                No. Never. Your prompt text never leaves your browser. Classification runs 100% locally
+                on your computer via an on-device machine-learning model compiled to WebAssembly. There are no analytics,
+                no telemetry servers, and no cloud loggers.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-question">
+              <span>Does MindShield block AI?</span>
+              <span class="faq-icon">▸</span>
+            </summary>
+            <div class="faq-answer">
+              <p>
+                No. MindShield is not an AI blocker or website restrictor. It acts as an intentional speed bump.
+                When a query is flagged as a basic shortcut, it simply pauses submission for a short reflection period.
+                Once that moment passes, or if your prompt is substantial, you can submit immediately.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-question">
+              <span>Why does MindShield pause some prompts?</span>
+              <span class="faq-icon">▸</span>
+            </summary>
+            <div class="faq-answer">
+              <p>
+                Repeatedly using AI for minor tasks can make it easier to rely on AI automatically 
+                rather than attempting the task yourself. Pausing simple shortcuts introduces just 
+                enough friction to create a brief moment of awareness: 
+                <em>"Do I actually need AI for this, or can I quickly think through it myself?"</em>
+              </p>
+            </div>
+          </details>
+
+            <details class="faq-item">
+            <summary class="faq-question">
+              <span>What is cognitive offloading?</span>
+              <span class="faq-icon">▸</span>
+            </summary>
+            <div class="faq-answer">
+              <p>
+                Cognitive offloading is the practice of delegating mental tasks—such as 
+                remembering, calculating, reasoning, or analyzing—to external digital tools. 
+                While it can be useful and efficient, researchers have raised questions about 
+                how repeated reliance on external tools may influence cognitive engagement 
+                and independent problem-solving over time.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-question">
+              <span>Which AI assistants does it support?</span>
+              <span class="faq-icon">▸</span>
+            </summary>
+            <div class="faq-answer">
+              <p>
+                MindShield currently supports ChatGPT, Claude, Google Gemini, and Grok web interfaces,
+                with ongoing updates to support more platforms.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-question">
+              <span>Is MindShield open source?</span>
+              <span class="faq-icon">▸</span>
+            </summary>
+            <div class="faq-answer">
+              <p>
+                Yes. MindShield is entirely open source. You can inspect the classification logic,
+                review extension permissions, or contribute directly on
+                <a href="https://github.com/fluryjanis/Mind-Shield" target="_blank" rel="noopener noreferrer">GitHub</a>.
+              </p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-question">
+              <span>How does the local AI model work?</span>
+              <span class="faq-icon">▸</span>
+            </summary>
+            <div class="faq-answer">
+              <p>
+                MindShield packages a compact, optimized classifier compiled to WebAssembly (Wasm).
+                It assesses the complexity, intent, and depth of your query in milliseconds right inside
+                your browser tab—achieving fast, privacy-preserving evaluation without requiring an external API key.
+              </p>
+            </div>
+          </details>
+
+        </div>
+      </div>
+    </section>
 
     <!-- FINAL CTA -->
-
-    <section class="final-cta">
-
+    <section class="final-cta" aria-label="Get MindShield">
       <div class="container">
-
         <div class="section-heading">
-
           <h2>Keep AI useful. Keep your thinking yours.</h2>
-
         </div>
 
         <p>
@@ -786,9 +837,8 @@
         </p>
 
         <div class="btn-group">
-
           <a
-            href="https://github.com/fluryjanis/Mind-Shield-Firefox/releases/tag/v1.1.5"
+            href="https://addons.mozilla.org/en-US/firefox/addon/mindshield/"
             class="btn btn-primary"
             target="_blank"
             rel="noopener noreferrer"
@@ -797,43 +847,63 @@
           </a>
 
           <a
-            href="https://github.com/fluryjanis/Mind-Shield/releases/tag/v1.1.5"
+            href="https://github.com/fluryjanis/Mind-Shield/releases/tag/v1.2.0"
             class="btn btn-secondary"
             target="_blank"
             rel="noopener noreferrer"
           >
             🌐 Download for Chrome
           </a>
-
         </div>
-
       </div>
+    </section>
 
+    <!-- CREATOR / ABOUT -->
+    <section id="about" aria-label="About MindShield">
+      <div class="container">
+        <div class="highlight-card">
+          <h2>About MindShield</h2>
+          <p>
+            MindShield is an open-source project created by
+            <strong>Janis Flury</strong> that explores more intentional
+            ways of using artificial intelligence without automatically
+            handing over reasoning and decision-making to AI tools.
+          </p>
+          <p style="margin-top: 1rem;">
+            The project includes the MindShield browser extension,
+            research and writing about AI and critical thinking, and
+            interactive experiments exploring AI dependence and
+            cognitive offloading.
+          </p>
+          <p style="margin-top: 1rem;">
+            <a
+              href="https://fluryjanis.github.io/frog1230.github.io/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              More projects by Janis Flury →
+            </a>
+          </p>
+        </div>
+      </div>
     </section>
 
   </main>
 
-
   <!-- FOOTER -->
-
   <footer>
-
     <div class="container">
-
       <p>
-        MindShield ·
-        Created by
+        MindShield · Created by
         <a
           href="https://fluryjanis.github.io/frog1230.github.io/"
           target="_blank"
           rel="noopener noreferrer"
         >
-          Frog1230
+          Janis Flury (Frog1230)
         </a>
       </p>
-
       <p>
-
         <a
           href="https://github.com/fluryjanis/Mind-Shield"
           target="_blank"
@@ -841,11 +911,8 @@
         >
           Open source on GitHub
         </a>
-
       </p>
-
     </div>
-
   </footer>
 
 </body>

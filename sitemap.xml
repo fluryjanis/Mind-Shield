@@ -1,6 +1,52 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+  <!-- MindShield Project Homepage -->
   <url>
     <loc>https://fluryjanis.github.io/Mind-Shield/</loc>
+    <lastmod>2026-09-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>1.0</priority>
   </url>
+
+  <!-- MindShield Web Game -->
+  <url>
+    <loc>https://fluryjanis.github.io/frog1230.github.io/Web-mindshield/game.html</loc>
+    <lastmod>2026-09-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- MindShield Testing / Demo -->
+  <url>
+    <loc>https://fluryjanis.github.io/frog1230.github.io/Web-mindshield/mindshield-test.html</loc>
+    <lastmod>2026-08-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- MindShield v1.2.0 Development Log -->
+  <url>
+    <loc>https://fluryjanis.github.io/frog1230.github.io/blog/MindShield-v1.2.0-Update.html</loc>
+    <lastmod>2026-08-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- MindShield v1.1.0 Development Log -->
+  <url>
+    <loc>https://fluryjanis.github.io/frog1230.github.io/blog/v1.1.0.html</loc>
+    <lastmod>2026-08-17</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- MindShield Related Article -->
+  <url>
+    <loc>https://fluryjanis.github.io/frog1230.github.io/blog/How-to-Use-AI-Without-Losing-Critical-Thinking.html</loc>
+    <lastmod>2026-09-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
 </urlset>
