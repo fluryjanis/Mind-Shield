@@ -141,27 +141,43 @@
       font-size: 0.9rem;
     }
 
-    .launch-badge {
+    .badges-container {
       margin-top: 1.75rem;
       display: flex;
       justify-content: center;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
     }
 
-    .launch-badge a {
-      display: inline-block;
+    .badges-container a {
+      display: inline-flex;
+      align-items: center;
       transition: transform 0.2s ease, opacity 0.2s ease;
     }
 
-    .launch-badge a:hover {
+    .badges-container a:hover {
       transform: translateY(-2px);
       opacity: 0.95;
     }
 
-    .launch-badge img {
+    .badges-container img {
       display: block;
       height: auto;
       max-width: 250px;
+    }
+
+    /* Outvote Badge Styling */
+    .outvote-badge {
+      display: inline-block;
+      padding: 10px 18px;
+      border-radius: 999px;
+      background: #14110f;
+      color: #f4f1ea;
+      font: 700 13px/1 system-ui, sans-serif;
+      letter-spacing: 0.04em;
+      text-decoration: none;
+      border: 1px solid var(--border);
     }
 
     /* Sections */
@@ -515,9 +531,9 @@
           Free · Privacy-first · Local AI · Open source
         </p>
 
-        <!-- Smol Launch Badge -->
-        <div class="launch-badge">
-          <a href="https://smollaunch.com" target="_blank" rel="noopener">
+        <!-- Product Badges (Smol Launch & Outvote) -->
+        <div class="badges-container">
+          <a href="https://smollaunch.com" target="_blank" rel="noopener noreferrer">
             <img
               src="https://smollaunch.com/badges/featured.svg"
               alt="MindShield — Featured on Smol Launch"
@@ -525,6 +541,15 @@
               width="250"
               height="60"
             />
+          </a>
+
+          <a
+            href="https://outvote.lol/p/fluryjanis-github-io?ref=badge"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="outvote-badge"
+          >
+            On the ballot at outvote
           </a>
         </div>
 
