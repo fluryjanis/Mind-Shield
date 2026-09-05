@@ -141,6 +141,29 @@
       font-size: 0.9rem;
     }
 
+    .launch-badge {
+      margin-top: 1.75rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .launch-badge a {
+      display: inline-block;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+
+    .launch-badge a:hover {
+      transform: translateY(-2px);
+      opacity: 0.95;
+    }
+
+    .launch-badge img {
+      display: block;
+      height: auto;
+      max-width: 250px;
+    }
+
     /* Sections */
     section {
       margin-bottom: 5rem;
@@ -492,6 +515,19 @@
           Free · Privacy-first · Local AI · Open source
         </p>
 
+        <!-- Smol Launch Badge -->
+        <div class="launch-badge">
+          <a href="https://smollaunch.com" target="_blank" rel="noopener">
+            <img
+              src="https://smollaunch.com/badges/featured.svg"
+              alt="MindShield — Featured on Smol Launch"
+              loading="lazy"
+              width="250"
+              height="60"
+            />
+          </a>
+        </div>
+
       </div>
     </header>
 
@@ -755,25 +791,25 @@
             </summary>
             <div class="faq-answer">
               <p>
-                Repeatedly using AI for minor tasks can make it easier to rely on AI automatically 
-                rather than attempting the task yourself. Pausing simple shortcuts introduces just 
-                enough friction to create a brief moment of awareness: 
+                Repeatedly using AI for minor tasks can make it easier to rely on AI automatically
+                rather than attempting the task yourself. Pausing simple shortcuts introduces just
+                enough friction to create a brief moment of awareness:
                 <em>"Do I actually need AI for this, or can I quickly think through it myself?"</em>
               </p>
             </div>
           </details>
 
-            <details class="faq-item">
+          <details class="faq-item">
             <summary class="faq-question">
               <span>What is cognitive offloading?</span>
               <span class="faq-icon">▸</span>
             </summary>
             <div class="faq-answer">
               <p>
-                Cognitive offloading is the practice of delegating mental tasks—such as 
-                remembering, calculating, reasoning, or analyzing—to external digital tools. 
-                While it can be useful and efficient, researchers have raised questions about 
-                how repeated reliance on external tools may influence cognitive engagement 
+                Cognitive offloading is the practice of delegating mental tasks—such as
+                remembering, calculating, reasoning, or analyzing—to external digital tools.
+                While it can be useful and efficient, researchers have raised questions about
+                how repeated reliance on external tools may influence cognitive engagement
                 and independent problem-solving over time.
               </p>
             </div>
