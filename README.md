@@ -12,7 +12,7 @@ It doesn't try to stop you from using AI. It helps you decide **when you actuall
 
 ### 🌐 Chrome / Chromium
 
-**[⬇️ Download MindShield v1.1.5 for Chrome](https://github.com/fluryjanis/Mind-Shield/releases/tag/v1.1.5#assets)**
+**[⬇️ Download MindShield v1.1.5 for Chrome](https://sourceforge.net/projects/mind-shield/)**
 
 Chrome and Chromium-based browsers currently require a manual installation.
 
@@ -158,7 +158,7 @@ It is simply a tool for introducing a moment of reflection when a prompt appears
 
 Latest release.
 
-See the [Chrome release](https://github.com/fluryjanis/Mind-Shield/releases/tag/v1.1.5) and [Firefox release](https://github.com/fluryjanis/Mind-Shield-Firefox/releases/tag/v1.1.5) for the available downloads.
+See the [Chrome release](https://sourceforge.net/projects/mind-shield/) and [Firefox release](https://github.com/fluryjanis/Mind-Shield-Firefox/releases/tag/v1.1.5) for the available downloads.
 
 ### v1.1.0
 
